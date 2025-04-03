@@ -1,0 +1,3 @@
+[submodule "external-plugins/jwt-keycloak"]
+	path = external-plugins/jwt-keycloak
+	url = https://github.com/telekom/kong-plugin-jwt-keycloak.git

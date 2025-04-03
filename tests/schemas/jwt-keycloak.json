@@ -1,0 +1,164 @@
+{
+  "fields": [
+    {
+      "uri_param_names": {
+        "type": "set",
+        "elements": {
+          "type": "string"
+        },
+        "default": [
+          "jwt"
+        ]
+      }
+    },
+    {
+      "cookie_names": {
+        "type": "set",
+        "elements": {
+          "type": "string"
+        },
+        "default": []
+      }
+    },
+    {
+      "claims_to_verify": {
+        "type": "set",
+        "elements": {
+          "type": "string",
+          "one_of": [
+            "exp",
+            "nbf"
+          ]
+        },
+        "default": [
+          "exp"
+        ]
+      }
+    },
+    {
+      "anonymous": {
+        "type": "string"
+      }
+    },
+    {
+      "run_on_preflight": {
+        "type": "boolean",
+        "default": true,
+        "required": true
+      }
+    },
+    {
+      "maximum_expiration": {
+        "type": "number",
+        "between": [
+          0,
+          31536000
+        ],
+        "default": 0
+      }
+    },
+    {
+      "header_names": {
+        "type": "set",
+        "elements": {
+          "type": "string"
+        },
+        "default": [
+          "authorization"
+        ]
+      }
+    },
+    {
+      "algorithm": {
+        "type": "string",
+        "default": "RS256"
+      }
+    },
+    {
+      "allowed_iss": {
+        "type": "set",
+        "elements": {
+          "type": "string"
+        },
+        "required": true
+      }
+    },
+    {
+      "iss_key_grace_period": {
+        "type": "number",
+        "between": [
+          1,
+          60
+        ],
+        "default": 10
+      }
+    },
+    {
+      "well_known_template": {
+        "type": "string",
+        "default": "%s/.well-known/openid-configuration"
+      }
+    },
+    {
+      "scope": {
+        "type": "set",
+        "elements": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "roles": {
+        "type": "set",
+        "elements": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "realm_roles": {
+        "type": "set",
+        "elements": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "client_roles": {
+        "type": "set",
+        "elements": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "consumer_match": {
+        "type": "boolean",
+        "default": false
+      }
+    },
+    {
+      "consumer_match_claim": {
+        "type": "string",
+        "default": "azp"
+      }
+    },
+    {
+      "consumer_match_claim_custom_id": {
+        "type": "boolean",
+        "default": false
+      }
+    },
+    {
+      "consumer_match_ignore_not_found": {
+        "type": "boolean",
+        "default": false
+      }
+    },
+    {
+      "cafile": {
+        "type": "string"
+      }
+    }
+  ]
+}
