@@ -11,15 +11,6 @@ on:
       - main
 
 jobs:
-  test-build:
-    uses: ./.github/workflows/_fetch_build_push_image.yml
-    with:
-      source_repository: '${{ github.repository }}'
-      source_branch: '${{ github.ref_name }}'
-      target_image: 'kong-${{ github.ref_name }}'
-      target_architecture: 'linux/amd64'
-      target_registry: '' # Don't push the image
-
   test-plugins:
     runs-on: ubuntu-latest
     steps:
