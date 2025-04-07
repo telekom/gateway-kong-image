@@ -14,6 +14,22 @@ Platform (O28M). The API Gateway is based on Kong OSS.
 The plugins within this repository are partially based on the official Kong plugins and have been modified to meet the
 requirements of the O28M project.
 
+## Cloning the repository
+
+Since this repository utilizes Git submodules, it is important to clone it with the `--recursive` or
+`--recurse-submodules` option. This ensures that all submodules are cloned along with the main repository.
+
+```sh
+git clone --recursive https://github.com/telekom/gateway-kong-image
+```
+
+If you have already cloned the repository without this option, you can initialize and update the submodules using the
+following command:
+
+```sh
+git submodule update --init --recursive
+```
+
 ## Plugins
 
 ### jwt-keycloak
