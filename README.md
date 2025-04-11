@@ -62,8 +62,8 @@ The `zipkin` plugin is used for tracing requests with Zipkin. It is an adjusted 
 1. **Clone the repository:**
 
     ```sh
-    git clone <repository-url>
-    cd <repository-directory>
+    git clone --recursive https://github.com/telekom/gateway-kong-image.git
+    cd gateway-kong-image
     ```
 
 2. **Build and start the services:**
