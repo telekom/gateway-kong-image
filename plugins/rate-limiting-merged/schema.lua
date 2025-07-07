@@ -1,8 +1,8 @@
--- SPDX-FileCopyrightText: 2022 Kong Inc.
+-- SPDX-FileCopyrightText: 2025 Kong Inc.
 --
 -- SPDX-License-Identifier: Apache-2.0
 
--- Based on: https://github.com/Kong/kong/blob/2.8.3/kong/plugins/rate-limiting/schema.lua
+-- Based on: https://github.com/Kong/kong/blob/3.9.1/kong/plugins/rate-limiting/schema.lua
 -- Changes for Open Telekom Integration Platform are marked with 'SPDX-SnippetBegin' and '-- SPDX-SnippetEnd'
 
 local typedefs = require "kong.db.schema.typedefs"
@@ -59,11 +59,10 @@ if is_dbless() then
       "redis",
     },
   }
-
 else
   policy = {
     type = "string",
-    default = "cluster",
+    default = "local",
     len_min = 0,
     one_of = {
       "local",

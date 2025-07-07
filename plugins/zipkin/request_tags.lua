@@ -1,8 +1,9 @@
--- SPDX-FileCopyrightText: 2021 Kong Inc.
+-- SPDX-FileCopyrightText: 2025 Kong Inc.
 --
 -- SPDX-License-Identifier: Apache-2.0
 
--- Based on: https://github.com/Kong/kong/blob/2.8.3/kong/plugins/zipkin/request_tags.lua
+-- Based on: https://github.com/Kong/kong/blob/3.9.1/kong/plugins/zipkin/request_tags.lua
+-- Changes for Open Telekom Integration Platform are marked with 'SPDX-SnippetBegin' and '-- SPDX-SnippetEnd'
 
 -- Module for parsing Zipkin span tags introduced by requests with a special header
 -- by default the header is called Zipkin-Tags
@@ -14,7 +15,7 @@
 -- Will add two tags to the request span in Zipkin
 
 
-local split = require "kong.tools.utils".split
+local split = require "kong.tools.string".split
 
 local match = string.match
 

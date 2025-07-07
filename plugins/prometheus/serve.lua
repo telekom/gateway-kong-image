@@ -1,8 +1,8 @@
--- SPDX-FileCopyrightText: 2020 Kong Inc.
+-- SPDX-FileCopyrightText: 2025 Kong Inc.
 --
 -- SPDX-License-Identifier: Apache-2.0
 
--- Based on: https://github.com/Kong/kong/tree/2.8.3/kong/plugins/prometheus/serve.lua
+-- Based on: https://github.com/Kong/kong/blob/3.9.1/kong/plugins/prometheus/serve.lua
 
 local lapis = require "lapis"
 local prometheus = require "kong.plugins.prometheus.exporter"
