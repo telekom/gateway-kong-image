@@ -86,6 +86,15 @@ return {
               default_format = "b3",
             },
           } },
+          -- SPDX-SnippetBegin
+          -- SPDX-FileCopyrightText: 2025 Deutsche Telekom AG
+          -- SPDX-License-Identifier: Apache-2.0
+          -- Deutsche Telekom customizations for zipkin plugin
+          { environment = { description = "Environment tag for traces. Auto-detected from service tags if not specified.", type = "string", default = nil } },
+          { zone = { description = "Zone tag for traces to identify the deployment zone.", type = "string", default = nil } },
+          { force_sample = { description = "Force sampling for all requests when set to true, regardless of sample_ratio.", type = "boolean", default = false } },
+          { local_component_name = { description = "Component name for local spans. Used for Tardis trace identification.", type = "string", default = nil } },
+          -- SPDX-SnippetEnd
         },
     }, },
   },
