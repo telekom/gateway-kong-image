@@ -102,23 +102,6 @@ end
 -- SPDX-SnippetEnd
 
 
---[[ -- SPDX-SnippetBegin
--- SPDX-License-Identifier: Apache-2.0
--- SPDX-SnippetCopyrightText: 2025 Deutsche Telekom AG
-local function timer_log(premature, reporter)
-  if premature then
-    return
-  end
-
-  local ok, err = reporter:flush()
-  if not ok then
-    kong.log.err("reporter flush ", err)
-    return
-  end
-end
--- SPDX-SnippetEnd ]]
-
-
 -- adds the proxy span to the zipkin context, unless it already exists
 local function get_or_add_proxy_span(zipkin, timestamp)
   if not zipkin.proxy_span then
@@ -562,15 +545,6 @@ function ZipkinLogHandler:log(conf) -- luacheck: ignore 212
   reporter:report(proxy_span)
   request_span:finish(now_mu)
   reporter:report(request_span)
-
---[[   -- SPDX-SnippetBegin
-  -- SPDX-License-Identifier: Apache-2.0
-  -- SPDX-SnippetCopyrightText: 2025 Deutsche Telekom AG
-  local ok, err = ngx.timer.at(0, timer_log, reporter)
-  if not ok then
-    kong.log.err("failed to create timer: ", err)
-  end
-  -- SPDX-SnippetEnd ]]
 end
 
 

@@ -37,6 +37,10 @@ local function send_entries_to_zipkin(conf, entries)
 
   kong.log.debug("zipkin batch size: ", #entries)
   kong.log.debug("zipkin endpoint: ", conf.http_endpoint)
+
+  local json_entries = cjson.encode(entries)
+  kong.log.debug("zipkin json entries: ", json_entries)
+  
   local httpc = resty_http.new()
   httpc:set_timeouts(conf.connect_timeout, conf.send_timeout, conf.read_timeout)
   local res, err = httpc:request_uri(conf.http_endpoint, {
@@ -44,7 +48,7 @@ local function send_entries_to_zipkin(conf, entries)
     headers = {
       ["content-type"] = "application/json",
     },
-    body = cjson.encode(entries),
+    body = json_entries,
   })
   if not res then
     return nil, "zipkin request failed: " .. err
