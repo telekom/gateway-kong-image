@@ -137,7 +137,8 @@ ZIPKIN_RESPONSE=$(curl -s -X POST $KONG_ADMIN_URL/plugins \
       "sample_ratio": 1.0,
       "include_credential": true,
       "traceid_byte_count": 16,
-      "local_service_name": "kong-gateway"
+      "local_service_name": "kong-gateway",
+      "local_component_name": "kong-gateway-component"
     }
   }')
 
