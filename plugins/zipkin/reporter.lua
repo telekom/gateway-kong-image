@@ -8,6 +8,8 @@
 local resty_http = require "resty.http"
 local to_hex = require "resty.string".to_hex
 local cjson = require "cjson".new()
+local Queue = require "kong.tools.queue"
+
 cjson.encode_number_precision(16)
 
 local zipkin_reporter_methods = {}
@@ -27,22 +29,41 @@ local function ip_kind(addr)
   end
 end
 
--- SPDX-SnippetBegin
--- SPDX-License-Identifier: Apache-2.0
--- SPDX-SnippetCopyrightText: 2025 Deutsche Telekom AG
-local function new(http_endpoint, local_component_name, default_service_name, local_service_name)
--- SPDX-SnippetEnd
+
+local function send_entries_to_zipkin(conf, entries)
+  if conf.http_endpoint == nil or conf.http_endpoint == ngx.null then
+    return true
+  end
+
+  kong.log.debug("zipkin batch size: ", #entries)
+  local httpc = resty_http.new()
+  httpc:set_timeouts(conf.connect_timeout, conf.send_timeout, conf.read_timeout)
+  local res, err = httpc:request_uri(conf.http_endpoint, {
+    method = "POST",
+    headers = {
+      ["content-type"] = "application/json",
+    },
+    body = cjson.encode(entries),
+  })
+  if not res then
+    return nil, "zipkin request failed: " .. err
+  elseif res.status < 200 or res.status >= 300 then
+    return nil, "zipkin server responded unexpectedly: " .. tostring(res.status) .. " " .. tostring(res.reason)
+  end
+  return true
+end
+
+
+local function new(conf)
   return setmetatable({
+    conf = conf,
     -- SPDX-SnippetBegin
     -- SPDX-License-Identifier: Apache-2.0
     -- SPDX-SnippetCopyrightText: 2025 Deutsche Telekom AG
-    local_component_name = local_component_name,
+    local_component_name = conf.local_component_name or "kong",
     -- SPDX-SnippetEnd
-    default_service_name = default_service_name,
-    local_service_name = local_service_name,
-    http_endpoint = http_endpoint,
-    pending_spans = {},
-    pending_spans_n = 0,
+    default_service_name = conf.default_service_name,
+    local_service_name = conf.local_service_name,
   }, zipkin_reporter_mt)
 end
 
@@ -111,40 +132,15 @@ function zipkin_reporter_methods:report(span)
     annotations = span.annotations,
   }
 
-  local i = self.pending_spans_n + 1
-  self.pending_spans[i] = zipkin_span
-  self.pending_spans_n = i
-end
-
-
-function zipkin_reporter_methods:flush()
-  if self.pending_spans_n == 0 then
-    return true
+  local ok, err = Queue.enqueue(
+    Queue.get_plugin_params("zipkin", self.conf),
+    send_entries_to_zipkin,
+    self.conf,
+    zipkin_span
+  )
+  if not ok then
+    kong.log.err("failed to enqueue span: ", err)
   end
-
-  local pending_spans = cjson.encode(self.pending_spans)
-  self.pending_spans = {}
-  self.pending_spans_n = 0
-
-  if self.http_endpoint == nil or self.http_endpoint == ngx.null then
-    return true
-  end
-
-  local httpc = resty_http.new()
-  local res, err = httpc:request_uri(self.http_endpoint, {
-    method = "POST",
-    headers = {
-      ["content-type"] = "application/json",
-    },
-    body = pending_spans,
-  })
-  -- TODO: on failure, retry?
-  if not res then
-    return nil, "failed to request: " .. err
-  elseif res.status < 200 or res.status >= 300 then
-    return nil, "failed: " .. res.status .. " " .. res.reason
-  end
-  return true
 end
 
 
