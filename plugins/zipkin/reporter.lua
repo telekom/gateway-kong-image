@@ -40,7 +40,7 @@ local function send_entries_to_zipkin(conf, entries)
 
   local json_entries = cjson.encode(entries)
   kong.log.debug("zipkin json entries: ", json_entries)
-  
+
   local httpc = resty_http.new()
   httpc:set_timeouts(conf.connect_timeout, conf.send_timeout, conf.read_timeout)
   local res, err = httpc:request_uri(conf.http_endpoint, {
@@ -53,6 +53,8 @@ local function send_entries_to_zipkin(conf, entries)
   if not res then
     return nil, "zipkin request failed: " .. err
   elseif res.status < 200 or res.status >= 300 then
+    kong.log.err("zipkin server responded with status: ", res.status, " ", res.reason)
+    kong.log.debug("zipkin response body: ", res.body)
     return nil, "zipkin server responded unexpectedly: " .. tostring(res.status) .. " " .. tostring(res.reason)
   end
   return true
