@@ -18,4 +18,4 @@ jobs:
       with:
         submodules: 'true'
     - name: Run Tests
-      run: docker compose up tests
+      run: docker compose build && docker compose up tests
