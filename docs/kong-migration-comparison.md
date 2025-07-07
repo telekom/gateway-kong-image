@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2025 Deutsche Telekom AG
+
+SPDX-License-Identifier: CC0-1.0    
+-->
+
 # Kong 2.8.3 to 3.9.1 Migration Analysis
 
 ## Executive Summary

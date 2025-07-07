@@ -69,7 +69,9 @@ The `zipkin` plugin is based on Kong 3.9.1 with Deutsche Telekom enhancements:
 ## Documentation
 
 - **[Production Migration Guide](docs/PRODUCTION-MIGRATION.md)**: Comprehensive guide for migrating from Kong 2.8.3 to Kong 3.9.1 in production environments with AWS Aurora PostgreSQL
-- **[Testing Guide](TESTING.md)**: Local development and testing procedures
+- **[Testing Guide](docs/TESTING.md)**: Local development and testing procedures
+- **[Migration Progress](docs/MIGRATION-PROGRESS.md)**: Detailed progress tracking for the Kong 3.9.1 migration
+- **[Kong Migration Comparison](docs/kong-migration-comparison.md)**: Technical comparison between Kong versions
 
 ## Local Testing Requirements
 
