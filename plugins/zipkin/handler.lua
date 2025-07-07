@@ -65,7 +65,7 @@ local function get_reporter(conf)
                                                -- SPDX-SnippetBegin
                                                -- SPDX-License-Identifier: Apache-2.0
                                                -- SPDX-SnippetCopyrightText: 2025 Deutsche Telekom AG
-                                               conf.local_service_name,
+                                               conf.local_component_name,
                                                -- SPDX-SnippetEnd
                                                conf.default_service_name,
                                                conf.local_service_name)
