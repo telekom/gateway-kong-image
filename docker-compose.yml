@@ -72,7 +72,6 @@ services:
       KC_HTTP_ENABLED: true
       KC_HOSTNAME_STRICT: false
       KC_HOSTNAME_STRICT_HTTPS: false
-      KC_HEALTH_ENABLED: true
       # HTTPS certificate configuration
       KC_HTTPS_CERTIFICATE_FILE: /opt/keycloak/certs/tls.crt
       KC_HTTPS_CERTIFICATE_KEY_FILE: /opt/keycloak/certs/tls.key
@@ -81,7 +80,7 @@ services:
       - "8443:8443"
     command: [
       "start-dev", 
-      "--http-enabled=true", 
+      "--http-enabled=true",
       "--hostname-strict=false", 
       "--hostname=iris",
       "--https-certificate-file=/opt/keycloak/certs/tls.crt",
@@ -92,9 +91,9 @@ services:
     image: badouralix/curl-jq
     depends_on:
       - kong
-      - jaeger
       - iris
       - httpbin
+      - jaeger
     volumes:
       - ./tests:/opt/tests
     entrypoint: [ "/bin/sh", "-c", "cd /opt/tests && chmod +x *.sh && ./run_tests.sh" ]

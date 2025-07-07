@@ -8,10 +8,16 @@
 
 set -e
 
-KONG_ADMIN_URL=${KONG_ADMIN_URL:-http://kong:8001}
-KONG_PROXY_URL=${KONG_PROXY_URL:-http://kong:8000}
+# Source environment configuration
+. ./_env.sh
+prepare_environment
 
 echo "🚀 Running quick integration tests..."
+echo "🔍 Verifying service availability..."
+
+# Quick health check for iris before proceeding
+echo "🏥 Checking Iris (Keycloak) health..."
+wait_for_iris
 
 # Test basic Kong functionality with all plugins configured
 
@@ -148,14 +154,34 @@ echo "Creating httpbin service..."
 curl -s -X POST $KONG_ADMIN_URL/services \
   -H "Content-Type: application/json" \
   -d '{"name": "httpbin-service", "url": "http://httpbin:8080"}' || echo "Service may already exist"
-echo "✅ Service configured"
+
+# Check if service was created successfully
+echo ""
+SERVICE_RESPONSE=$(curl -s $KONG_ADMIN_URL/services/httpbin-service)
+if echo "$SERVICE_RESPONSE" | jq -e '.id' >/dev/null 2>&1; then
+    echo "✅ Service httpbin-service created successfully"
+else
+    echo "❌ Failed to create service"
+    echo "Response: $SERVICE_RESPONSE"
+    exit 1
+fi
 
 # 6. Create route for the service (if not exists)
 echo "Creating route for httpbin service..."
 curl -s -X POST $KONG_ADMIN_URL/services/httpbin-service/routes \
   -H "Content-Type: application/json" \
   -d '{"name": "httpbin-route", "paths": ["/httpbin"], "strip_path": true}' || echo "Route may already exist"
-echo "✅ Route configured"
+
+# Check if route was created successfully
+echo ""
+ROUTE_RESPONSE=$(curl -s $KONG_ADMIN_URL/routes/httpbin-route)
+if echo "$ROUTE_RESPONSE" | jq -e '.id' >/dev/null 2>&1; then
+    echo "✅ Route httpbin-route created successfully"
+else
+    echo "❌ Failed to create route"
+    echo "Response: $ROUTE_RESPONSE"
+    exit 1
+fi
 
 # 7. Add Rate Limiting plugin to the service
 echo "Adding Rate Limiting Merged plugin..."
@@ -218,21 +244,34 @@ curl -s -X POST $KONG_ADMIN_URL/routes/httpbin-route/plugins \
   }' || echo "ACL plugin may already exist"
 echo "✅ ACL plugin configured"
 
+echo "🔗 Configuration setup completed "
+# --- End of configuration setup ---
+
 echo "🧪 Running functionality tests..."
 
 # Test 1: Test unauthorized request (should be blocked by JWT)
 echo "Test 1: Unauthorized request test..."
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" $KONG_PROXY_URL/httpbin/headers)
-if [ "$HTTP_CODE" = "401" ]; then
-  echo "✅ Test 1 passed: Unauthorized request blocked (HTTP $HTTP_CODE)"
-else
-  echo "❌ Test 1 failed: Expected 401, got $HTTP_CODE"
-fi
+for i in $(seq 1 10); do
+  echo "Attempt $i: Testing unauthorized request..."
+  # Make an unauthorized request to httpbin
+  HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" $KONG_PROXY_URL/httpbin/headers)
+  if [ "$HTTP_CODE" = "401" ]; then
+    echo "✅ Unauthorized request blocked (HTTP $HTTP_CODE)"
+    break
+  else
+    echo "❌ Unauthorized request failed: Expected 401, got $HTTP_CODE"
+    if [ $i -eq 10 ]; then
+      echo "❌ Test 1 failed: Unauthorized request did not return 401 after 10 attempts"
+      exit 1
+    fi
+    sleep 1
+  fi
+done
 
 # Test 2: Get JWT token from Keycloak and test authorized request
 echo "Test 2: JWT authentication test..."
 echo "Getting JWT token from Keycloak..."
-TOKEN_RESPONSE=$(curl -s -k -X POST "https://iris:8443/auth/realms/master/protocol/openid-connect/token" \
+TOKEN_RESPONSE=$(curl -s -k -X POST "$IRIS_HTTPS_URL/auth/realms/master/protocol/openid-connect/token" \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "grant_type=password&client_id=admin-cli&username=admin&password=admin")
 
@@ -250,10 +289,12 @@ if echo "$TOKEN_RESPONSE" | jq -e '.access_token' > /dev/null 2>&1; then
   else
     echo "❌ Test 2 failed: Expected 200, got $AUTH_HTTP_CODE"
     echo "Response: $(cat /tmp/auth_response 2>/dev/null || echo 'No response content')"
+    exit 1
   fi
 else
   echo "❌ Test 2 failed: Could not obtain JWT token from Keycloak"
   echo "Response: $TOKEN_RESPONSE"
+  exit 1
 fi
 
 # Test 3: Check if headers are added by request transformer (with JWT token)
@@ -273,6 +314,7 @@ if [ -n "$TOKEN" ]; then
     echo "✅ Test 3 passed: Request transformer working (X-Test-Plugin: $TEST_PLUGIN_HEADER)"
   else
     echo "❌ Test 3 failed: X-Test-Plugin header = $TEST_PLUGIN_HEADER (expected: test-value)"
+    exit 1
   fi
 else
   echo "⏭️ Test 3 skipped: No JWT token available"
@@ -297,6 +339,7 @@ if [ -n "$TOKEN" ]; then
   else
     echo "❌ Test 4 failed: Rate limiting headers not found"
     echo "Available headers: $(echo "$RATE_LIMIT_RESPONSE" | grep -E 'HTTP|X-|Rate' || echo 'none')"
+    exit 1
   fi
 else
   echo "⏭️ Test 4 skipped: No JWT token available"
@@ -314,6 +357,7 @@ else
   if [ -n "$ALT_METRICS" ]; then
     echo "Kong status endpoint available, metrics may need separate configuration"
   fi
+  exit 1
 fi
 
 # Test 6: Test multiple authenticated requests for rate limiting
@@ -347,6 +391,7 @@ if [ -n "$TOKEN" ]; then
     echo "⚠️ Test 7 warning: Jaeger API not accessible, but trace should be sent"
   else
     echo "❌ Test 7 failed: kong-gateway service not found in Jaeger traces"
+    exit 1
   fi
 else
   echo "⏭️ Test 7 skipped: No JWT token available"
@@ -357,12 +402,13 @@ echo ""
 echo "📊 Service URLs:"
 echo "   Kong Proxy:    $KONG_PROXY_URL (http://localhost:$(echo $KONG_PROXY_URL | cut -d':' -f3))"
 echo "   Kong Admin:    $KONG_ADMIN_URL (http://localhost:$(echo $KONG_ADMIN_URL | cut -d':' -f3))"
-echo "   Keycloak:      https://iris:8443 (https://localhost:8443)"
+echo "   Keycloak HTTP: $IRIS_HTTP_URL (http://localhost:$(echo $IRIS_HTTP_URL | cut -d':' -f3))"
+echo "   Keycloak HTTPS:$IRIS_HTTPS_URL (https://localhost:$(echo $IRIS_HTTPS_URL | cut -d':' -f3))"
 echo "   Jaeger UI:     http://jaeger:16686 (http://localhost:16686)"
 echo ""
 echo "🔗 Test endpoints:"
 echo "   # Get JWT token:"
-echo "   TOKEN=\$(curl -s -k -X POST \"https://localhost:8443/auth/realms/master/protocol/openid-connect/token\" \\"
+echo "   TOKEN=\$(curl -s -k -X POST \"$IRIS_HTTPS_URL/auth/realms/master/protocol/openid-connect/token\" \\"
 echo "     -H \"Content-Type: application/x-www-form-urlencoded\" \\"
 echo "     -d \"grant_type=password&client_id=admin-cli&username=admin&password=admin\" | jq -r '.access_token')"
 echo ""

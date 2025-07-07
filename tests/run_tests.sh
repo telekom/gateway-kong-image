@@ -13,7 +13,10 @@ echo ""
 # include _env.sh
 . _env.sh
 prepare_environment
+
+# Wait for all services to be ready
 wait_for_kong
+wait_for_iris
 
 # Test 1: Check plugin availability
 echo "🔌 Phase 1: Checking plugin availability..."
