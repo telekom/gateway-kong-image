@@ -36,6 +36,7 @@ local function send_entries_to_zipkin(conf, entries)
   end
 
   kong.log.debug("zipkin batch size: ", #entries)
+  kong.log.debug("zipkin endpoint: ", conf.http_endpoint)
   local httpc = resty_http.new()
   httpc:set_timeouts(conf.connect_timeout, conf.send_timeout, conf.read_timeout)
   local res, err = httpc:request_uri(conf.http_endpoint, {
