@@ -62,7 +62,7 @@ services:
 
   iris:
     build:
-      context: .
+      context: ./tests/
       dockerfile: Dockerfile.iris
     environment:
       KEYCLOAK_ADMIN: admin
