@@ -8,11 +8,12 @@ SPDX-License-Identifier: CC0-1.0
 
 ## Overview
 
-This repository contains instructions on how to build one of the API Gateway's images of the Open Telekom Integration
-Platform (O28M). The API Gateway is based on Kong OSS.
+This repository contains a custom Kong distribution for the Open Telekom Integration
+Platform (O28M). The API Gateway is based on **Kong OSS 3.9.1** with comprehensive customizations.
 
-The plugins within this repository are partially based on the official Kong plugins and have been modified to meet the
-requirements of the O28M project.
+The plugins within this repository are based on the official Kong 3.9.1 plugins and have been enhanced with
+Deutsche Telekom-specific features including memory optimization, enhanced consumer tracking, latency spike prevention,
+and specialized metrics collection.
 
 ## Cloning the repository
 
@@ -35,27 +36,46 @@ git submodule update --init --recursive
 ### jwt-keycloak
 
 The `jwt-keycloak` plugin is used for integrating Kong with Keycloak for JWT authentication.
-It is integrated as a Git submodule and references https://github.com/telekom/kong-plugin-jwt-keycloak.
+It is integrated as a Git submodule and references <https://github.com/telekom/kong-plugin-jwt-keycloak>.
 
 ### prometheus
 
-The `prometheus` plugin is used for monitoring Kong with Prometheus. It is an adjusted version of the official Kong
-plugin.
+The `prometheus` plugin is based on Kong 3.9.1 with Deutsche Telekom enhancements including:
+
+- O28M latency buckets for memory optimization
+- Enhanced consumer tracking across all metric types
+- Horizon consumer handling for Pubsub-Horizon subscribers
+- Latency spike prevention with yield mechanisms
 
 ### rate-limiting-merged
 
-The `rate-limiting-merged` plugin is self-developed and provides enhanced rate-limiting capabilities compatible with
-O28M's gateway mesh capabilities.
+The `rate-limiting-merged` plugin is based on Kong 3.9.1 rate-limiting with Deutsche Telekom enhancements:
+
+- Multi-dimensional rate limiting (service + consumer)
+- Header merging logic with X-Merged-RateLimit-* headers
+- Consumer omission capabilities
+- Enhanced period validation and usage calculation
 
 ### zipkin
 
-The `zipkin` plugin is used for tracing requests with Zipkin. It is an adjusted version of the official Kong plugin.
+The `zipkin` plugin is based on Kong 3.9.1 with Deutsche Telekom enhancements:
+
+- Tardis trace ID generation (worker_id + "#" + counter)
+- Business context headers (x-request-id, x-business-context, x-correlation-id)
+- Horizon PubSub headers support
+- Environment detection from service tags
+- Enhanced balancer tracking with error states
+
+## Documentation
+
+- **[Production Migration Guide](docs/PRODUCTION-MIGRATION.md)**: Comprehensive guide for migrating from Kong 2.8.3 to Kong 3.9.1 in production environments with AWS Aurora PostgreSQL
+- **[Testing Guide](TESTING.md)**: Local development and testing procedures
 
 ## Local Testing Requirements
 
-- Docker
-- Docker Compose
-- PostgreSQL
+- Docker & Docker Compose
+- OpenSSL (for generating self-signed certificates)
+- curl and jq (for running tests)
 
 ## Setup
 
@@ -66,37 +86,76 @@ The `zipkin` plugin is used for tracing requests with Zipkin. It is an adjusted 
     cd gateway-kong-image
     ```
 
-2. **Build and start the services:**
+2. **Build and start all services (certificates auto-generated):**
 
     ```sh
-    docker-compose up --build -d kong
+    docker-compose up --build -d
     ```
 
-3. **Run the tests:**
+3. **Run integration tests:**
 
     ```sh
-    docker-compose run tests
+    docker-compose run --rm tests
     ```
+
+4. **Access the services:**
+   - Kong Proxy: <http://localhost:8000>
+   - Kong Admin: <http://localhost:8001>
+   - Keycloak: <https://localhost:8443/auth> (HTTPS)
+   - Jaeger UI: <http://localhost:16686>
 
 ## Docker Compose Services
 
-- **kong_init:** Initializes the Kong database with migrations.
-- **kong:** Runs the Kong API Gateway.
-- **postgres:** PostgreSQL database for Kong.
-- **tests:** Runs the test suite.
+- **kong_init:** Initializes the Kong database with migrations
+- **kong:** Runs the Kong 3.9.1 API Gateway with custom plugins
+- **postgres:** PostgreSQL database for Kong
+- **iris:** Keycloak identity provider with HTTP/HTTPS support
+- **jaeger:** Jaeger tracing collector and UI
+- **httpbin:** Internal HTTP testing service (mccutchen/go-httpbin)
+- **tests:** Test runner container for validation
 
 ## Dockerfile
 
 The `Dockerfile` is used to build a custom Kong OSS image with the `jwt-keycloak` and `rate-limiting-merged` plugins as
 well as patched versions of `prometheus` and `zipkin`.
 
-The Dockerfile is based on the official Kong OSS image and includes the following steps:
+The Dockerfile is based on the official Kong 3.9.1 OSS image and includes:
 
-- Build and install the external plugin `jwt-keycloak` via `luarocks`.
-- Add the `rate-limiting-merged` plugin.
-- Patch the existing `prometheus` and `zipkin` plugins.
+- Build and install the external plugin `jwt-keycloak` via `luarocks`
+- Add the `rate-limiting-merged` plugin with Kong 3.9.1 PDK APIs
+- Enhanced `prometheus` plugin with Deutsche Telekom customizations
+- Enhanced `zipkin` plugin with Kong 3.9.1 observability framework
 
-**Suggested Kong OSS version:** 2.8.3 (LTS)
+**Kong OSS version:** 3.9.1 (Latest with AI Gateway capabilities)
+
+## Deutsche Telekom Customizations
+
+All customizations are marked with SPDX snippet headers and include:
+
+### Memory Optimization
+
+- O28M_ENI_LATENCY_BUCKETS with reduced bucket count
+- Sub-1000ms latency coverage (50, 100, 500ms buckets)
+- Local storage support for gauge metrics
+
+### Enhanced Consumer Tracking
+
+- Consumer labels on all latency metrics (kong_latency_ms, upstream_latency_ms, request_latency_ms)
+- Horizon consumer handling with subscriber ID mapping
+- Anonymous consumer fallback logic
+
+### Latency Spike Prevention
+
+- Yield mechanisms in metrics collection loops
+- Non-blocking upstream health metrics export
+- Phase-aware yielding for long operations
+
+### Tracing Enhancements
+
+- Tardis trace ID generation with worker identification
+- Business context header support
+- Environment detection from service tags
+- Enhanced balancer state tracking
 
 ## Code of Conduct
 
@@ -110,4 +169,4 @@ By participating in this project, you agree to abide by its [Code of Conduct](./
 
 This project follows the [REUSE standard for software licensing](https://reuse.software/).
 Each file contains copyright and license information, and license texts can be found in the [./LICENSES](./LICENSES)
-folder. For more information visit https://reuse.software/.
+folder. For more information visit <https://reuse.software/>.

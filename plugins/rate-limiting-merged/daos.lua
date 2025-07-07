@@ -1,8 +1,8 @@
--- SPDX-FileCopyrightText: 2020 Kong Inc.
+-- SPDX-FileCopyrightText: 2025 Kong Inc.
 --
 -- SPDX-License-Identifier: Apache-2.0
 
--- Based on: https://github.com/Kong/kong/blob/2.8.3/kong/plugins/rate-limiting/daos.lua
+-- Based on: https://github.com/Kong/kong/blob/3.9.1/kong/plugins/rate-limiting/daos.lua
 
 return {
   {

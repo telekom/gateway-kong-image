@@ -1,4 +1,4 @@
--- SPDX-FileCopyrightText: 2021 Kong Inc.
+-- SPDX-FileCopyrightText: 2025 Kong Inc.
 --
 -- SPDX-License-Identifier: Apache-2.0
 
@@ -30,13 +30,13 @@ end
 -- SPDX-SnippetBegin
 -- SPDX-License-Identifier: Apache-2.0
 -- SPDX-SnippetCopyrightText: 2025 Deutsche Telekom AG
-local function new(http_endpoint, local_component_name, default_service_name, local_service_name)
+local function new(http_endpoint, local_service_name, default_service_name, local_service_name)
 -- SPDX-SnippetEnd
   return setmetatable({
     -- SPDX-SnippetBegin
     -- SPDX-License-Identifier: Apache-2.0
     -- SPDX-SnippetCopyrightText: 2025 Deutsche Telekom AG
-    local_component_name = local_component_name,
+    local_service_name = local_service_name,
     -- SPDX-SnippetEnd
     default_service_name = default_service_name,
     local_service_name = local_service_name,
@@ -88,7 +88,7 @@ function zipkin_reporter_methods:report(span)
   -- SPDX-License-Identifier: Apache-2.0
   -- SPDX-SnippetCopyrightText: 2025 Deutsche Telekom AG
   local localEndpoint = {
-    serviceName = self.local_component_name or "kong"
+    serviceName = self.local_service_name or "kong"
   }
   -- SPDX-SnippetEnd
 
