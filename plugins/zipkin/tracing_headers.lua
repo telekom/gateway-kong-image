@@ -1,4 +1,4 @@
--- SPDX-FileCopyrightText: 2021 Kong Inc.
+-- SPDX-FileCopyrightText: 2025 Kong Inc.
 --
 -- SPDX-License-Identifier: Apache-2.0
 

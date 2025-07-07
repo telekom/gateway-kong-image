@@ -20,6 +20,8 @@ x-kong-image: &kong-image
     KONG_PROXY_ERROR_LOG: /dev/stderr
     KONG_ADMIN_ERROR_LOG: /dev/stderr
     KONG_ADMIN_LISTEN: 0.0.0.0:8001
+    KONG_TRACING_INSTRUMENTATIONS: all
+    KONG_TRACING_SAMPLING_RATE: 1.0
 
 services:
   kong_init:
@@ -32,6 +34,8 @@ services:
     depends_on:
       kong_init:
         condition: service_completed_successfully
+      httpbin:
+        condition: service_started
     entrypoint: ["/bin/sh", "-c", "KONG_NGINX_DAEMON='off' kong start"]
     ports:
       - "8000:8000"
@@ -42,11 +46,58 @@ services:
       POSTGRES_DB: kong
       POSTGRES_USER: kong
       POSTGRES_PASSWORD: kong
+  httpbin:
+    image: mccutchen/go-httpbin
+    ports:
+      - "8080"  # Internal port only, no host exposure
+  jaeger:
+    image: jaegertracing/all-in-one:1.53
+    ports:
+      - "16686:16686"
+      - "14268:14268"
+      - "9411:9411"
+    environment:
+      COLLECTOR_OTLP_ENABLED: true
+      COLLECTOR_ZIPKIN_HOST_PORT: :9411
+
+  iris:
+    build:
+      context: .
+      dockerfile: Dockerfile.iris
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: dev-file
+      KC_HTTP_RELATIVE_PATH: /auth
+      KC_HTTP_ENABLED: true
+      KC_HOSTNAME_STRICT: false
+      KC_HOSTNAME_STRICT_HTTPS: false
+      KC_HEALTH_ENABLED: true
+      # HTTPS certificate configuration
+      KC_HTTPS_CERTIFICATE_FILE: /opt/keycloak/certs/tls.crt
+      KC_HTTPS_CERTIFICATE_KEY_FILE: /opt/keycloak/certs/tls.key
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+    command: [
+      "start-dev", 
+      "--http-enabled=true", 
+      "--hostname-strict=false", 
+      "--hostname=iris",
+      "--https-certificate-file=/opt/keycloak/certs/tls.crt",
+      "--https-certificate-key-file=/opt/keycloak/certs/tls.key"
+    ]
+
   tests:
     image: badouralix/curl-jq
     depends_on:
       - kong
+      - jaeger
+      - iris
+      - httpbin
     volumes:
-      - ./tests:/opt/tests:ro
-    entrypoint: [ "/bin/sh", "-c", "cd /opt/tests && ./run_tests.sh" ]
+      - ./tests:/opt/tests
+    entrypoint: [ "/bin/sh", "-c", "cd /opt/tests && chmod +x *.sh && ./run_tests.sh" ]
+    profiles:
+      - testing
 

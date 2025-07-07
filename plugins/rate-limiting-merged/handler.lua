@@ -1,8 +1,8 @@
--- SPDX-FileCopyrightText: 2022 Kong Inc.
+-- SPDX-FileCopyrightText: 2025 Kong Inc.
 --
 -- SPDX-License-Identifier: Apache-2.0
 
--- Based on: https://github.com/Kong/kong/blob/2.8.3/kong/plugins/rate-limiting/handler.lua
+-- Based on: https://github.com/Kong/kong/blob/3.9.1/kong/plugins/rate-limiting/handler.lua
 -- Changes for Open Telekom Integration Platform are marked with 'SPDX-SnippetBegin' and '-- SPDX-SnippetEnd'
 
 -- Copyright (C) Kong Inc.
@@ -12,6 +12,8 @@ local timestamp = require "kong.tools.timestamp"
 -- SPDX-SnippetCopyrightText: 2025 Deutsche Telekom AG
 local policies = require "kong.plugins.rate-limiting-merged.policies"
 -- SPDX-SnippetEnd
+local kong_meta = require "kong.meta"
+local pdk_private_rl = require "kong.pdk.private.rate_limiting"
 
 
 local kong = kong
@@ -28,9 +30,14 @@ local pairs = pairs
 local error = error
 local tostring = tostring
 local timer_at = ngx.timer.at
+local SYNC_RATE_REALTIME = -1
 
 
-local EMPTY = {}
+local pdk_rl_store_response_header = pdk_private_rl.store_response_header
+local pdk_rl_apply_response_headers = pdk_private_rl.apply_response_headers
+
+
+local EMPTY = require("kong.tools.table").EMPTY
 -- SPDX-SnippetBegin
 -- SPDX-License-Identifier: Apache-2.0
 -- SPDX-SnippetCopyrightText: 2025 Deutsche Telekom AG
@@ -65,12 +72,13 @@ local X_RATELIMIT_REMAINING = {
 
 local RateLimitingHandler = {}
 
+
+RateLimitingHandler.VERSION = kong_meta.version
 -- SPDX-SnippetBegin
 -- SPDX-License-Identifier: Apache-2.0
 -- SPDX-SnippetCopyrightText: 2025 Deutsche Telekom AG
 RateLimitingHandler.PRIORITY = 900
 -- SPDX-SnippetEnd
-RateLimitingHandler.VERSION = "2.4.0"
 
 
 -- SPDX-SnippetBegin
@@ -92,6 +100,7 @@ local function get_identifier(conf, limit_by)
 
   return identifier, nil
 end
+
 
 local function get_usage(conf, identifiers, limits, current_timestamp)
   local usage = {}
@@ -123,7 +132,14 @@ local function get_usage(conf, identifiers, limits, current_timestamp)
 
   return usage, stop
 end
+
+local function getTableLength(T)
+  local count = 0
+  for _ in pairs(T) do count = count + 1 end
+  return count
+end
 -- SPDX-SnippetEnd
+
 
 local function increment(premature, conf, ...)
   if premature then
@@ -133,17 +149,10 @@ local function increment(premature, conf, ...)
   policies[conf.policy].increment(conf, ...)
 end
 
+
 -- SPDX-SnippetBegin
 -- SPDX-License-Identifier: Apache-2.0
 -- SPDX-SnippetCopyrightText: 2025 Deutsche Telekom AG
-local function getTableLength(t)
-  local count = 0
-  for _ in pairs(t) do
-    count = count + 1
-  end
-  return count
-end
-
 function RateLimitingHandler:access(conf)
   local current_timestamp = time() * 1000
   local fault_tolerant = conf.fault_tolerant
@@ -257,5 +266,6 @@ function RateLimitingHandler:header_filter(conf)
 
 end
 -- SPDX-SnippetEnd
+
 
 return RateLimitingHandler
