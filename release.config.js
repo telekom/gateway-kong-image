@@ -4,7 +4,7 @@
 
 module.exports = {
     branches: ['main'],
-    repositoryUrl: 'git@github.com:telekom/gateway-rotator.git',
+    repositoryUrl: 'git@github.com:telekom/gateway-kong-image.git',
     plugins: [
         '@semantic-release/commit-analyzer',
         'semantic-release-export-data',
