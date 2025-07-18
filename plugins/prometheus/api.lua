@@ -1,41 +1,33 @@
--- SPDX-FileCopyrightText: 2021 Kong Inc.
+-- SPDX-FileCopyrightText: 2025 Kong Inc.
 --
 -- SPDX-License-Identifier: Apache-2.0
 
--- Based on: https://github.com/Kong/kong/tree/2.8.3/kong/plugins/prometheus/api.lua
--- Changes for Open Telekom Integration Platform are marked with 'SPDX-SnippetBegin' and '-- SPDX-SnippetEnd'
+-- Based on: https://github.com/Kong/kong/blob/3.9.1/kong/plugins/prometheus/api.lua
 
--- SPDX-SnippetBegin
--- SPDX-License-Identifier: Apache-2.0
--- SPDX-SnippetCopyrightText: 2025 Deutsche Telekom AG
+local buffer = require("string.buffer")
 local exporter = require "kong.plugins.prometheus.exporter"
--- SPDX-SnippetEnd
 
-local printable_metric_data = function()
-  -- SPDX-SnippetBegin
-  -- SPDX-License-Identifier: Apache-2.0
-  -- SPDX-SnippetCopyrightText: 2025 Deutsche Telekom AG
+
+local printable_metric_data = function(_)
+  local buf = buffer.new(4096)
   -- override write_fn, since stream_api expect response to returned
   -- instead of ngx.print'ed
-  local buffer = {}
-
-  exporter.metric_data(function(data)
-    table.insert(buffer, table.concat(data, ""))
+  exporter.metric_data(function(new_metric_data)
+    buf:put(new_metric_data)
   end)
 
-  return table.concat(buffer, "")
-  -- SPDX-SnippetEnd
+  local str = buf:get()
+
+  buf:free()
+
+  return str
 end
+
 
 return {
   ["/metrics"] = {
     GET = function()
-  -- SPDX-SnippetBegin
-  -- SPDX-License-Identifier: Apache-2.0
-  -- SPDX-SnippetCopyrightText: 2025 Deutsche Telekom AG
-  -- Changed variable name from prometheus to exporter
       exporter.collect()
-  -- SPDX-SnippetEnd
     end,
   },
 

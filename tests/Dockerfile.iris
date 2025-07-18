@@ -1,0 +1,49 @@
+# SPDX-FileCopyrightText: 2025 Deutsche Telekom AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# Multi-stage build: First stage for certificate generation
+FROM alpine:latest AS cert-generator
+
+# Install OpenSSL
+RUN apk add --no-cache openssl
+
+# Generate certificates
+WORKDIR /certs
+
+# Create config file for certificate extensions
+RUN echo '[v3_req]' > cert.conf && \
+    echo 'keyUsage = keyEncipherment, dataEncipherment' >> cert.conf && \
+    echo 'extendedKeyUsage = serverAuth' >> cert.conf && \
+    echo 'subjectAltName = @alt_names' >> cert.conf && \
+    echo '[alt_names]' >> cert.conf && \
+    echo 'DNS.1 = iris' >> cert.conf && \
+    echo 'DNS.2 = localhost' >> cert.conf && \
+    echo 'IP.1 = 127.0.0.1' >> cert.conf
+
+# Generate private key, CSR, and certificate
+RUN openssl genrsa -out tls.key 2048 && \
+    openssl req -new -key tls.key -out tls.csr -subj "/C=DE/ST=Nordrhein-Westfalen/L=Bonn/O=Deutsche Telekom AG/OU=IT/CN=iris" && \
+    openssl x509 -req -in tls.csr -signkey tls.key -out tls.crt -days 365 -extensions v3_req -extfile cert.conf && \
+    chmod 644 tls.crt && chmod 600 tls.key && rm tls.csr cert.conf
+
+# Second stage: Keycloak with certificates
+FROM quay.io/keycloak/keycloak:26.0.5
+
+# Switch to root to copy certificates and set up directories
+USER root
+
+# Copy certificates from cert-generator stage
+COPY --from=cert-generator /certs/tls.crt /opt/keycloak/certs/tls.crt
+COPY --from=cert-generator /certs/tls.key /opt/keycloak/certs/tls.key
+
+# Set proper ownership and permissions
+RUN chown -R keycloak:keycloak /opt/keycloak/certs && \
+    chmod 644 /opt/keycloak/certs/tls.crt && \
+    chmod 600 /opt/keycloak/certs/tls.key
+
+# Switch back to keycloak user
+USER keycloak
+
+# Use standard Keycloak entrypoint
+ENTRYPOINT ["/opt/keycloak/bin/kc.sh"]

@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-ARG KONG_VERSION=2.8.3
+ARG KONG_VERSION=3.9.1
 
 FROM kong:${KONG_VERSION} AS jwt-keycloak-builder
 
@@ -51,18 +51,6 @@ RUN rm -rf /opt/plugins
 
 # Registering additional plugins which are not just a patch of existing ones
 ENV KONG_PLUGINS="bundled,jwt-keycloak,rate-limiting-merged"
-
-## PostgreSQL v14+ fix: install luaossl
-ARG FIX_DEPENDENCIES="gcc musl-dev"
-RUN if [ -x "$(command -v apk)" ]; then apk add --no-cache $FIX_DEPENDENCIES; \
-    elif [ -x "$(command -v apt-get)" ]; then apt-get update && apt-get install $FIX_DEPENDENCIES; \
-    fi; \
-    # --only-server fix based on https://support.konghq.com/support/s/article/LuaRocks-Error-main-function-has-more-than-65536-constants
-    luarocks --only-server https://raw.githubusercontent.com/rocks-moonscript-org/moonrocks-mirror/daab2726276e3282dc347b89a42a5107c3500567 \
-      install luaossl OPENSSL_DIR=/usr/local/kong CRYPTO_DIR=/usr/local/kong; \
-    if [ -x "$(command -v apk)" ]; then apk del $FIX_DEPENDENCIES; \
-    elif [ -x "$(command -v apt-get)" ]; then apt-get remove --purge -y $FIX_DEPENDENCIES; \
-    fi
 
 # Switch back to kong user
 USER kong

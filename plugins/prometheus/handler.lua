@@ -1,8 +1,8 @@
--- SPDX-FileCopyrightText: 2022 Kong Inc.
+-- SPDX-FileCopyrightText: 2025 Kong Inc.
 --
 -- SPDX-License-Identifier: Apache-2.0
 
--- Based on: https://github.com/Kong/kong/tree/2.8.3/kong/plugins/prometheus/handler.lua
+-- Based on: https://github.com/Kong/kong/blob/3.9.1/kong/plugins/prometheus/handler.lua
 -- Changes for Open Telekom Integration Platform are marked with 'SPDX-SnippetBegin' and '-- SPDX-SnippetEnd'
 
 -- SPDX-SnippetBegin
@@ -16,6 +16,7 @@ local kong_meta = require "kong.meta"
 exporter.init()
 -- SPDX-SnippetEnd
 
+
 local PrometheusHandler = {
   PRIORITY = 13,
   -- SPDX-SnippetBegin
@@ -25,7 +26,7 @@ local PrometheusHandler = {
   -- SPDX-SnippetEnd
 }
 
-function PrometheusHandler.init_worker()
+function PrometheusHandler:init_worker()
   -- SPDX-SnippetBegin
   -- SPDX-License-Identifier: Apache-2.0
   -- SPDX-SnippetCopyrightText: 2025 Deutsche Telekom AG
@@ -33,13 +34,20 @@ function PrometheusHandler.init_worker()
   -- SPDX-SnippetEnd
 end
 
+
+function PrometheusHandler:configure(configs)
+  exporter.configure(configs)
+end
+
+
 -- SPDX-SnippetBegin
 -- SPDX-License-Identifier: Apache-2.0
 -- SPDX-SnippetCopyrightText: 2025 Deutsche Telekom AG
 local http_subsystem = ngx.config.subsystem == "http"
 -- SPDX-SnippetEnd
 
-function PrometheusHandler.log(self, conf)
+
+function PrometheusHandler:log(conf)
   local message = kong.log.serialize()
 
   local serialized = {}
@@ -51,6 +59,7 @@ function PrometheusHandler.log(self, conf)
   else
     serialized.consumer = "anonymous"
   end
+  -- SPDX-SnippetEnd
 
   if conf.status_code_metrics then
     if http_subsystem and message.response then
@@ -70,14 +79,22 @@ function PrometheusHandler.log(self, conf)
     end
   end
 
+  -- SPDX-SnippetBegin
+  -- SPDX-License-Identifier: Apache-2.0
+  -- SPDX-SnippetCopyrightText: 2025 Deutsche Telekom AG
   if message.request and message.request.method ~= nil then
     serialized.method = message.request.method
   else
     serialized.method = "default"
   end
+  -- SPDX-SnippetEnd
 
   if conf.latency_metrics then
     serialized.latencies = message.latencies
+  end
+
+  if conf.ai_metrics then
+    serialized.ai_metrics = message.ai
   end
 
   if conf.upstream_health_metrics then
@@ -86,6 +103,9 @@ function PrometheusHandler.log(self, conf)
     exporter.set_export_upstream_health_metrics(false)
   end
 
+  -- SPDX-SnippetBegin
+  -- SPDX-License-Identifier: Apache-2.0
+  -- SPDX-SnippetCopyrightText: 2025 Deutsche Telekom AG
   exporter.log(message, serialized)
   -- SPDX-SnippetEnd
 end
