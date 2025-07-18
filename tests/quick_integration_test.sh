@@ -326,7 +326,7 @@ test_request_transformer() {
     HEADERS_RESPONSE=$(curl -s $KONG_PROXY_URL/httpbin/headers -H "Authorization: Bearer $TOKEN")
     TEST_PLUGIN_HEADER=$(echo "$HEADERS_RESPONSE" | jq -r '.headers["X-Test-Plugin"] // .headers["x-test-plugin"] // empty' 2>/dev/null || echo "")
     
-    if [ "$TEST_PLUGIN_HEADER" = "test-value" ] || [ "$TEST_PLUGIN_HEADER" = "meh" ]; then
+    if [ "$(echo "$TEST_PLUGIN_HEADER" | jq -r '.[0]')" = "test-value" ]; then
         return 0
     else
         echo "    X-Test-Plugin header not found or incorrect: '$TEST_PLUGIN_HEADER'"
