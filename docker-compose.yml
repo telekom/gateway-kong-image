@@ -8,7 +8,7 @@ x-kong-image: &kong-image
     dockerfile: Dockerfile
   environment:
     KONG_DATABASE: postgres
-    KONG_PG_HOST: postgres
+    KONG_PG_HOST: postgres.docker
     KONG_PG_PORT: 5432
     KONG_PG_DATABASE: kong
     KONG_PG_SCHEMA: public
@@ -29,6 +29,8 @@ services:
     depends_on:
       - postgres
     entrypoint: [ "/bin/sh", "-c", "until kong migrations bootstrap; do echo waiting for database; sleep 2; done;" ]
+    links:
+      - "postgres:postgres.docker"
   kong:
     <<: *kong-image
     depends_on:
@@ -40,6 +42,11 @@ services:
     ports:
       - "8000:8000"
       - "8001:8001"
+    links:
+      - "postgres:postgres.docker"
+      - "httpbin:httpbin.docker"
+      - "jaeger:jaeger.docker"
+      - "iris:iris.docker"
   postgres:
     image: postgres:16
     environment:
@@ -57,7 +64,7 @@ services:
       - "14268:14268"
       - "9411:9411"
     environment:
-      COLLECTOR_OTLP_ENABLED: true
+      COLLECTOR_OTLP_ENABLED: 'true'
       COLLECTOR_ZIPKIN_HOST_PORT: :9411
 
   iris:
@@ -69,9 +76,9 @@ services:
       KEYCLOAK_ADMIN_PASSWORD: admin
       KC_DB: dev-file
       KC_HTTP_RELATIVE_PATH: /auth
-      KC_HTTP_ENABLED: true
-      KC_HOSTNAME_STRICT: false
-      KC_HOSTNAME_STRICT_HTTPS: false
+      KC_HTTP_ENABLED: 'true'
+      KC_HOSTNAME_STRICT: 'false'
+      KC_HOSTNAME_STRICT_HTTPS: 'false'
       # HTTPS certificate configuration
       KC_HTTPS_CERTIFICATE_FILE: /opt/keycloak/certs/tls.crt
       KC_HTTPS_CERTIFICATE_KEY_FILE: /opt/keycloak/certs/tls.key
@@ -82,7 +89,7 @@ services:
       "start-dev", 
       "--http-enabled=true",
       "--hostname-strict=false", 
-      "--hostname=iris",
+      "--hostname=iris.docker",
       "--https-certificate-file=/opt/keycloak/certs/tls.crt",
       "--https-certificate-key-file=/opt/keycloak/certs/tls.key"
     ]
@@ -97,6 +104,11 @@ services:
     volumes:
       - ./tests:/opt/tests
     entrypoint: [ "/bin/sh", "-c", "cd /opt/tests && chmod +x *.sh && ./run_tests.sh" ]
+    links:
+      - kong:kong.docker
+      - iris:iris.docker
+      - httpbin:httpbin.docker
+      - jaeger:jaeger.docker
     profiles:
       - testing
 

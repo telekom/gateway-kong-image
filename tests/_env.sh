@@ -6,10 +6,11 @@
 
 # Set the environment variables for the tests
 prepare_environment() {
-  export KONG_ADMIN_URL=http://kong:8001
-  export KONG_PROXY_URL=http://kong:8000
-  export IRIS_HTTP_URL=http://iris:8080
-  export IRIS_HTTPS_URL=https://iris:8443
+  export KONG_ADMIN_URL=http://kong.docker:8001
+  export KONG_PROXY_URL=http://kong.docker:8000
+  export IRIS_HTTP_URL=http://iris.docker:8080
+  export IRIS_HTTPS_URL=https://iris.docker:8443
+  export HTTPBIN_URL=http://httpbin.docker:8080
 }
 
 # wait for kong to be ready or timeout
@@ -31,7 +32,7 @@ wait_for_iris() {
   echo "Waiting for Iris (Keycloak) to be ready..."
   for i in $(seq 1 30); do
     # Try health endpoint on port 9000 first
-    if test $(curl -s -o /dev/null -w '%{http_code}' http://iris:8080/auth/realms/master/.well-known/openid-configuration) -eq 200; then
+    if test $(curl -s -o /dev/null -w '%{http_code}' $IRIS_HTTP_URL/auth/realms/master/.well-known/openid-configuration) -eq 200; then
       echo "Iris health endpoint is ready!"
       return 0
     fi

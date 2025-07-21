@@ -181,8 +181,8 @@ curl http://localhost:16686  # Jaeger UI
 
 #### JWT Token Issues
 - **Issue**: Token acquisition fails
-- **Solution**: Verify Keycloak is running and accessible at `iris:8080`
-- **Check**: `curl http://iris:8080/auth/realms/master/.well-known/openid-configuration`
+- **Solution**: Verify Keycloak is running and accessible at `iris.docker:8080`
+- **Check**: `curl http://iris.docker:8080/auth/realms/master/.well-known/openid-configuration`
 
 #### Rate Limiting Headers Missing
 - **Issue**: No X-RateLimit headers in response
@@ -197,7 +197,7 @@ curl http://localhost:16686  # Jaeger UI
 #### Zipkin Traces Missing
 - **Issue**: No traces in Jaeger
 - **Solution**: Verify Jaeger endpoint configuration and wait for trace propagation
-- **Check**: Jaeger is accessible at `jaeger:14268` from Kong
+- **Check**: Jaeger is accessible at `jaeger.docker:14268` from Kong
 
 ## Test Maintenance
 
