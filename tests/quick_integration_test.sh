@@ -161,12 +161,12 @@ ZIPKIN_RESPONSE=$(curl -s -X POST $KONG_ADMIN_URL/plugins \
   -d '{
     "name": "zipkin",
     "config": {
-      "http_endpoint": "http://jaeger:9411/api/v2/spans",
+      "http_endpoint": "http://jaeger.docker:9411/api/v2/spans",
       "sample_ratio": 1.0,
       "include_credential": true,
       "traceid_byte_count": 16,
       "local_service_name": "kong-gateway",
-      "local_component_name": "kong-gateway-component"
+      "local_component_name": "kong-gateway"
     }
   }')
 
@@ -182,7 +182,7 @@ fi
 echo "Creating httpbin service..."
 curl -s -X POST $KONG_ADMIN_URL/services \
   -H "Content-Type: application/json" \
-  -d '{"name": "httpbin-service", "url": "http://httpbin:8080"}' || echo "Service may already exist"
+  -d '{"name": "httpbin-service", "url": "http://httpbin.docker:8080"}' || echo "Service may already exist"
 
 # Check if service was created successfully
 echo ""
@@ -253,7 +253,7 @@ curl -s -X POST $KONG_ADMIN_URL/plugins \
   -d '{
     "name": "jwt-keycloak",
     "config": {
-      "allowed_iss": ["https://iris:8443/auth/realms/master"],
+      "allowed_iss": ["https://iris.docker:8443/auth/realms/master"],
       "consumer_match": true,
       "consumer_match_claim": "azp",
       "consumer_match_ignore_not_found": true
@@ -299,8 +299,8 @@ test_jwt_authentication() {
       -H "Content-Type: application/x-www-form-urlencoded" \
       -d "grant_type=password&client_id=admin-cli&username=admin&password=admin")
     
-    if echo "$TOKEN_RESPONSE" | jq -e '.access_token' > /dev/null 2>&1; then
-        TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token')
+    TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token // empty')
+    if [ -n "$TOKEN" ]; then
         AUTH_HTTP_CODE=$(curl -s -o /tmp/auth_response -w "%{http_code}" $KONG_PROXY_URL/httpbin/headers \
           -H "Authorization: Bearer $TOKEN")
         
@@ -324,7 +324,7 @@ test_request_transformer() {
     fi
     
     HEADERS_RESPONSE=$(curl -s $KONG_PROXY_URL/httpbin/headers -H "Authorization: Bearer $TOKEN")
-    TEST_PLUGIN_HEADER=$(echo "$HEADERS_RESPONSE" | jq -r '.headers["X-Test-Plugin"] // .headers["x-test-plugin"] // empty' 2>/dev/null || echo "")
+    TEST_PLUGIN_HEADER=$(echo "$HEADERS_RESPONSE" | jq -r '.headers["X-Test-Plugin"] // .headers["x-test-plugin"] // empty' 2>/dev/null)
     
     if [ "$(echo "$TEST_PLUGIN_HEADER" | jq -r '.[0]')" = "test-value" ]; then
         return 0
@@ -398,7 +398,7 @@ test_zipkin_tracing() {
     sleep 2
     
     # Check Jaeger for traces
-    JAEGER_RESPONSE=$(curl -s "http://jaeger:16686/api/services" 2>/dev/null || echo "jaeger_unavailable")
+    JAEGER_RESPONSE=$(curl -s "http://jaeger.docker:16686/api/services" 2>/dev/null || echo "jaeger_unavailable")
     if echo "$JAEGER_RESPONSE" | grep -q "kong-gateway" 2>/dev/null; then
         return 0
     elif [ "$JAEGER_RESPONSE" = "jaeger_unavailable" ]; then
@@ -476,5 +476,5 @@ echo "   curl $KONG_ADMIN_URL/metrics"
 echo ""
 echo "🔐 JWT Authentication:"
 echo "   Keycloak Admin: admin/admin"
-echo "   Issuer: https://iris:8443/auth/realms/master"
+echo "   Issuer: https://iris.docker:8443/auth/realms/master"
 echo "   Consumer: admin-cli (with admin-group ACL)"
