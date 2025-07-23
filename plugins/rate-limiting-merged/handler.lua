@@ -77,7 +77,7 @@ RateLimitingHandler.VERSION = kong_meta.version
 -- SPDX-SnippetBegin
 -- SPDX-License-Identifier: Apache-2.0
 -- SPDX-SnippetCopyrightText: 2025 Deutsche Telekom AG
-RateLimitingHandler.PRIORITY = 900
+RateLimitingHandler.PRIORITY = 910
 -- SPDX-SnippetEnd
 
 
