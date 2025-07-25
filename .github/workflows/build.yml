@@ -44,26 +44,30 @@ jobs:
     steps:
       - name: Inject slug vars
         uses: rlespinasse/github-slug-action@v5
-      - name: Determine tag
-        id: tag
-        run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "This workflow was triggered by workflow_dispatch."
-            export TAG=${{ github.event.inputs.tag }}
-          else
-            if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-              echo "This workflow was triggered by a tag push ${GITHUB_REF}"
-              export TAG=$(echo ${GITHUB_REF} | sed 's|^refs/tags/v||')
-            else
-              if [[ "${GITHUB_REF_POINT_SLUG}" == "main" ]]; then
-                export TAG="latest"
-              else
-                export TAG=${GITHUB_REF_POINT_SLUG}-${GITHUB_RUN_ID}
-              fi
-            fi
-          fi
-          echo "Image tag will be: ${TAG}"
-          echo "image-tag=${TAG}" >> "${GITHUB_OUTPUT}"
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
+        with:
+          images: ${{ vars.REGISTRY_HOST }}${{ vars.REGISTRY_REPO }}
+          flavor: |
+            latest=false
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value={{tag}},enable=${{ github.event_name == 'workflow_dispatch' }}
+            type=raw,value=${{github.head_ref}},enable=${{github.ref != format('refs/heads/{0}', 'main') && github.ref != format('refs/tags/{0}', '*')}}
+          labels: |
+            org.opencontainers.image.title=gateway-kong
+            org.opencontainers.image.description=Kong image as customized for usage within the Open Telekom Integration Platform
+            org.opencontainers.image.vendor=Deutsche Telekom IT GmbH
+            org.opencontainers.image.revision={{sha}}
+            ${{github.ref != format('refs/heads/{0}', 'main') && github.ref != format('refs/tags/{0}', '*') && 'quay.expires-after=4w'}}
+          annotations: |
+            org.opencontainers.image.title=gateway-kong
+            org.opencontainers.image.description=Kong image as customized for usage within the Open Telekom Integration Platform
+            org.opencontainers.image.vendor=Deutsche Telekom IT GmbH
+            org.opencontainers.image.revision={{sha}}
       - name: Login to registry
         uses: docker/login-action@v3
         with:
@@ -80,7 +84,9 @@ jobs:
         env:
           DOCKER_BUILD_SUMMARY: false
         with:
-          tags: ${{ vars.REGISTRY_HOST }}${{ vars.REGISTRY_REPO }}:${{ steps.tag.outputs.image-tag }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
           cache-from: type=registry,ref=${{ vars.REGISTRY_HOST }}${{ vars.REGISTRY_REPO }}:latest
           cache-to: type=inline
           push: true
