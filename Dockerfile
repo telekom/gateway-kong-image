@@ -17,7 +17,7 @@ RUN if [ -x "$(command -v apk)" ]; then apk add --no-cache $DISTO_ADDONS; \
 WORKDIR /tmp
 
 COPY ./external-plugins/jwt-keycloak/*.rockspec /tmp
-COPY ./external-plugins/jwt-keycloak/LICENSE /tmp/LICENSE
+COPY ./external-plugins/jwt-keycloak/LICENSES/Apache-2.0.txt /tmp/LICENSE
 COPY ./external-plugins/jwt-keycloak/src /tmp/src
 ARG PLUGIN_VERSION=1.3.0-1
 RUN luarocks make && luarocks pack kong-plugin-jwt-keycloak ${PLUGIN_VERSION}
