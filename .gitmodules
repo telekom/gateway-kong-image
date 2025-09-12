@@ -1,4 +1,4 @@
 [submodule "external-plugins/jwt-keycloak"]
 	path = external-plugins/jwt-keycloak
 	url = https://github.com/telekom/kong-plugin-jwt-keycloak.git
-	branch = 1.4.0-1
+	branch = feature/add-security-logging
