@@ -51,5 +51,8 @@ RUN rm -rf /opt/plugins
 # Registering additional plugins which are not just a patch of existing ones
 ENV KONG_PLUGINS="bundled,jwt-keycloak,rate-limiting-merged"
 
+# copy nginx template to bake it into the image
+COPY --chown=1000:1000 templates/nginx_kong.lua /usr/local/share/lua/5.1/kong/templates/nginx_kong.lua
+
 # Switch back to kong user
 USER kong

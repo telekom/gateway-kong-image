@@ -22,6 +22,8 @@ x-kong-image: &kong-image
     KONG_ADMIN_LISTEN: 0.0.0.0:8001
     KONG_TRACING_INSTRUMENTATIONS: all
     KONG_TRACING_SAMPLING_RATE: 1.0
+    ADMIN_ACCESS_LOG: /dev/stdout
+    ADMIN_ERROR_LOG: /dev/stderr
 
 services:
   kong_init:
@@ -47,6 +49,8 @@ services:
       - "httpbin:httpbin.docker"
       - "jaeger:jaeger.docker"
       - "iris:iris.docker"
+    volumes:
+      - ./tests/.htpasswd:/opt/kong/.htpasswd:ro
   postgres:
     image: postgres:16
     environment:
