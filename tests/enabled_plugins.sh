@@ -5,7 +5,7 @@
 
 check_plugin() {
   PLUGIN_NAME=$1
-  RESPONSE=$(curl -s ${KONG_ADMIN_URL}/plugins/enabled)
+  RESPONSE=$(curl -s -u admin:admin ${KONG_ADMIN_URL}/plugins/enabled)
   if echo "$RESPONSE" | grep -q "\"$PLUGIN_NAME\""; then
     echo "✅  Plugin $PLUGIN_NAME is enabled."
   else

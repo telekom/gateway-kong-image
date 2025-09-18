@@ -5,6 +5,8 @@
 
 
 # Set the environment variables for the tests
+# Note: Kong Admin API uses basic authentication (admin:admin)
+# The .htpasswd file is mounted via docker-compose.yml volume mount
 prepare_environment() {
   export KONG_ADMIN_URL=http://kong.docker:8001
   export KONG_PROXY_URL=http://kong.docker:8000
@@ -17,7 +19,7 @@ prepare_environment() {
 wait_for_kong() {
   echo "Waiting for Kong to be ready..."
   for i in $(seq 1 30); do
-    if curl -s -o /dev/null $KONG_ADMIN_URL; then
+    if curl -s -o /dev/null -u admin:admin $KONG_ADMIN_URL; then
       echo "Kong is ready!"
       return 0
     fi

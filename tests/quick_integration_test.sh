@@ -59,12 +59,12 @@ delete_resource() {
     local endpoint="$1"
     local name="$2"
     echo "🗑️ Cleaning up $name..."
-    curl -s -X DELETE "$KONG_ADMIN_URL$endpoint" >/dev/null 2>&1 || true
+    curl -s -u admin:admin -X DELETE "$KONG_ADMIN_URL$endpoint" >/dev/null 2>&1 || true
 }
 
 # Get and delete all plugins
 echo "🗑️ Removing all plugins..."
-PLUGINS=$(curl -s "$KONG_ADMIN_URL/plugins" | jq -r '.data[]?.id // empty' 2>/dev/null || true)
+PLUGINS=$(curl -s -u admin:admin "$KONG_ADMIN_URL/plugins" | jq -r '.data[]?.id // empty' 2>/dev/null || true)
 for plugin_id in $PLUGINS; do
     if [ -n "$plugin_id" ]; then
         delete_resource "/plugins/$plugin_id" "plugin $plugin_id"
@@ -73,7 +73,7 @@ done
 
 # Get and delete all routes
 echo "🗑️ Removing all routes..."
-ROUTES=$(curl -s "$KONG_ADMIN_URL/routes" | jq -r '.data[]?.id // empty' 2>/dev/null || true)
+ROUTES=$(curl -s -u admin:admin "$KONG_ADMIN_URL/routes" | jq -r '.data[]?.id // empty' 2>/dev/null || true)
 for route_id in $ROUTES; do
     if [ -n "$route_id" ]; then
         delete_resource "/routes/$route_id" "route $route_id"
@@ -82,7 +82,7 @@ done
 
 # Get and delete all services
 echo "🗑️ Removing all services..."
-SERVICES=$(curl -s "$KONG_ADMIN_URL/services" | jq -r '.data[]?.id // empty' 2>/dev/null || true)
+SERVICES=$(curl -s -u admin:admin "$KONG_ADMIN_URL/services" | jq -r '.data[]?.id // empty' 2>/dev/null || true)
 for service_id in $SERVICES; do
     if [ -n "$service_id" ]; then
         delete_resource "/services/$service_id" "service $service_id"
@@ -91,7 +91,7 @@ done
 
 # Get and delete all consumers
 echo "🗑️ Removing all consumers..."
-CONSUMERS=$(curl -s "$KONG_ADMIN_URL/consumers" | jq -r '.data[]?.id // empty' 2>/dev/null || true)
+CONSUMERS=$(curl -s -u admin:admin "$KONG_ADMIN_URL/consumers" | jq -r '.data[]?.id // empty' 2>/dev/null || true)
 for consumer_id in $CONSUMERS; do
     if [ -n "$consumer_id" ]; then
         delete_resource "/consumers/$consumer_id" "consumer $consumer_id"
@@ -104,7 +104,7 @@ echo "🔧 Creating fresh test configuration..."
 
 # 1. Create consumer 'admin-cli' (matches JWT azp claim)
 echo "Creating consumer 'admin-cli'..."
-CONSUMER_RESPONSE=$(curl -s -X POST $KONG_ADMIN_URL/consumers \
+CONSUMER_RESPONSE=$(curl -s -u admin:admin -X POST $KONG_ADMIN_URL/consumers \
   -H "Content-Type: application/json" \
   -d '{"username": "admin-cli", "custom_id": "admin-cli-user"}')
 
@@ -120,7 +120,7 @@ echo "✅ Consumer configured"
 
 # 2. Create ACL group for admin-cli
 echo "Creating ACL group for admin-cli..."
-ACL_RESPONSE=$(curl -s -X POST $KONG_ADMIN_URL/consumers/admin-cli/acls \
+ACL_RESPONSE=$(curl -s -u admin:admin -X POST $KONG_ADMIN_URL/consumers/admin-cli/acls \
   -H "Content-Type: application/json" \
   -d '{"group": "admin-group"}')
 
@@ -134,7 +134,7 @@ fi
 
 # 3. Enable global Prometheus plugin
 echo "Enabling global Prometheus plugin..."
-PROMETHEUS_RESPONSE=$(curl -s -X POST $KONG_ADMIN_URL/plugins \
+PROMETHEUS_RESPONSE=$(curl -s -u admin:admin -X POST $KONG_ADMIN_URL/plugins \
   -H "Content-Type: application/json" \
   -d '{
     "name": "prometheus",
@@ -156,7 +156,7 @@ fi
 
 # 4. Enable global Zipkin plugin
 echo "Enabling global Zipkin plugin..."
-ZIPKIN_RESPONSE=$(curl -s -X POST $KONG_ADMIN_URL/plugins \
+ZIPKIN_RESPONSE=$(curl -s -u admin:admin -X POST $KONG_ADMIN_URL/plugins \
   -H "Content-Type: application/json" \
   -d '{
     "name": "zipkin",
@@ -180,13 +180,13 @@ fi
 
 # 5. Create httpbin service using internal container
 echo "Creating httpbin service..."
-curl -s -X POST $KONG_ADMIN_URL/services \
+curl -s -u admin:admin -X POST $KONG_ADMIN_URL/services \
   -H "Content-Type: application/json" \
   -d '{"name": "httpbin-service", "url": "http://httpbin.docker:8080"}' || echo "Service may already exist"
 
 # Check if service was created successfully
 echo ""
-SERVICE_RESPONSE=$(curl -s $KONG_ADMIN_URL/services/httpbin-service)
+SERVICE_RESPONSE=$(curl -s -u admin:admin $KONG_ADMIN_URL/services/httpbin-service)
 if echo "$SERVICE_RESPONSE" | jq -e '.id' >/dev/null 2>&1; then
     echo "✅ Service httpbin-service created successfully"
 else
@@ -197,13 +197,13 @@ fi
 
 # 6. Create route for the service (if not exists)
 echo "Creating route for httpbin service..."
-curl -s -X POST $KONG_ADMIN_URL/services/httpbin-service/routes \
+curl -s -u admin:admin -X POST $KONG_ADMIN_URL/services/httpbin-service/routes \
   -H "Content-Type: application/json" \
   -d '{"name": "httpbin-route", "paths": ["/httpbin"], "strip_path": true}' || echo "Route may already exist"
 
 # Check if route was created successfully
 echo ""
-ROUTE_RESPONSE=$(curl -s $KONG_ADMIN_URL/routes/httpbin-route)
+ROUTE_RESPONSE=$(curl -s -u admin:admin $KONG_ADMIN_URL/routes/httpbin-route)
 if echo "$ROUTE_RESPONSE" | jq -e '.id' >/dev/null 2>&1; then
     echo "✅ Route httpbin-route created successfully"
 else
@@ -214,7 +214,7 @@ fi
 
 # 7. Add Rate Limiting plugin to the service
 echo "Adding Rate Limiting Merged plugin..."
-curl -s -X POST $KONG_ADMIN_URL/services/httpbin-service/plugins \
+curl -s -u admin:admin -X POST $KONG_ADMIN_URL/services/httpbin-service/plugins \
   -H "Content-Type: application/json" \
   -d '{
     "name": "rate-limiting-merged",
@@ -234,7 +234,7 @@ echo "✅ Rate Limiting plugin configured"
 
 # 8. Add Request Transformer plugin
 echo "Adding Request Transformer plugin..."
-curl -s -X POST $KONG_ADMIN_URL/routes/httpbin-route/plugins \
+curl -s -u admin:admin -X POST $KONG_ADMIN_URL/routes/httpbin-route/plugins \
   -H "Content-Type: application/json" \
   -d '{
     "name": "request-transformer",
@@ -248,7 +248,7 @@ echo "✅ Request Transformer plugin configured"
 
 # 9. Enable global JWT-Keycloak plugin
 echo "Enabling global JWT-Keycloak plugin..."
-curl -s -X POST $KONG_ADMIN_URL/plugins \
+curl -s -u admin:admin -X POST $KONG_ADMIN_URL/plugins \
   -H "Content-Type: application/json" \
   -d '{
     "name": "jwt-keycloak",
@@ -263,7 +263,7 @@ echo "✅ JWT-Keycloak plugin configured"
 
 # 10. Add ACL plugin to route for admin access
 echo "Adding ACL plugin to route..."
-curl -s -X POST $KONG_ADMIN_URL/routes/httpbin-route/plugins \
+curl -s -u admin:admin -X POST $KONG_ADMIN_URL/routes/httpbin-route/plugins \
   -H "Content-Type: application/json" \
   -d '{
     "name": "acl",
@@ -353,7 +353,7 @@ test_rate_limiting() {
 
 # Test 5: Prometheus metrics test
 test_prometheus_metrics() {
-    METRICS_RESPONSE=$(curl -s $KONG_ADMIN_URL/metrics)
+    METRICS_RESPONSE=$(curl -s -u admin:admin $KONG_ADMIN_URL/metrics)
     
     if echo "$METRICS_RESPONSE" | grep -q "kong_latency"; then
         return 0

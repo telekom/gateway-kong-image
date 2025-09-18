@@ -102,7 +102,7 @@ The `zipkin` plugin is based on Kong 3.9.1 with Deutsche Telekom enhancements:
 
 4. **Access the services:**
    - Kong Proxy: <http://localhost:8000>
-   - Kong Admin: <http://localhost:8001>
+   - Kong Admin: <http://localhost:8001> (requires basic auth: admin/admin during tests)
    - Keycloak: <https://localhost:8443/auth> (HTTPS)
    - Jaeger UI: <http://localhost:16686>
 
