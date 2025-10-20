@@ -126,7 +126,7 @@ local function init()
   if http_subsystem then
     metrics.status = prometheus:counter("http_requests_total",
                                         "HTTP status codes per consumer/service/route in Kong",
-                                        {"service", "route", "code", "source", "workspace", "consumer"})
+                                        {"service", "route", "code", "source", "workspace", "consumer", "method"})
   else
     metrics.status = prometheus:counter("stream_sessions_total",
                                         "Stream status codes per service/route in Kong",
@@ -263,7 +263,7 @@ end
 -- Since in the prometheus library we create a new table for each diverged label
 -- so putting the "more dynamic" label at the end will save us some memory
 local labels_table_bandwidth = {0, 0, 0, 0, 0}
-local labels_table_status = {0, 0, 0, 0, 0, 0}
+local labels_table_status = {0, 0, 0, 0, 0, 0, 0}
 -- SPDX-SnippetBegin
 -- SPDX-License-Identifier: Apache-2.0
 -- SPDX-SnippetCopyrightText: 2025 Deutsche Telekom AG
@@ -364,6 +364,7 @@ local function log(message, serialized)
 
     labels_table_status[5] = workspace
     labels_table_status[6] = consumer
+    labels_table_status[7] = serialized.method or "unknown"
 
     metrics.status:inc(1, labels_table_status)
   end
