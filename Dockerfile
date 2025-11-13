@@ -18,7 +18,7 @@ WORKDIR /tmp
 
 COPY ./external-plugins/jwt-keycloak/*.rockspec /tmp
 COPY ./external-plugins/jwt-keycloak/src /tmp/src
-ARG PLUGIN_VERSION=1.5.0-1
+ARG PLUGIN_VERSION=1.6.0-1
 RUN luarocks make && luarocks pack kong-plugin-jwt-keycloak ${PLUGIN_VERSION}
 
 
@@ -32,7 +32,7 @@ COPY --from=jwt-keycloak-builder /tmp/*.rock /tmp/
 USER root
 
 # Install jwt-keycloak plugin
-ARG PLUGIN_VERSION=1.5.0-1
+ARG PLUGIN_VERSION=1.6.0-1
 RUN luarocks install /tmp/kong-plugin-jwt-keycloak-${PLUGIN_VERSION}.all.rock
 
 # copy other plugins from repo to image
