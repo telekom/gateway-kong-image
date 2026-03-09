@@ -38,10 +38,10 @@ end
 local function is_dbless()
   local _, database, role = pcall(function()
     return kong.configuration.database,
-    -- SPDX-SnippetBegin
-    -- SPDX-License-Identifier: Apache-2.0
-    -- SPDX-SnippetCopyrightText: 2025 Deutsche Telekom AG
-    kong.configuration.role
+        -- SPDX-SnippetBegin
+        -- SPDX-License-Identifier: Apache-2.0
+        -- SPDX-SnippetCopyrightText: 2025 Deutsche Telekom AG
+        kong.configuration.role
     -- SPDX-SnippetEnd
   end)
 
@@ -74,54 +74,64 @@ end
 
 -- SPDX-SnippetBegin
 -- SPDX-License-Identifier: Apache-2.0
--- SPDX-SnippetCopyrightText: 2025 Deutsche Telekom AG
+-- SPDX-SnippetCopyrightText: 2025-2026 Deutsche Telekom AG
 return {
   name = "rate-limiting-merged",
   fields = {
     { protocols = typedefs.protocols_http },
-    { config = {
-      type = "record",
-      fields = {
-      { policy = policy },
-      { fault_tolerant = { type = "boolean", required = true, default = true }, },
-      { redis_host = typedefs.host },
-      { redis_port = typedefs.port({ default = 6379 }), },
-      { redis_password = { type = "string", len_min = 0, referenceable = true }, },
-      { redis_username = { type = "string", referenceable = true }, },
-      { redis_ssl = { type = "boolean", required = true, default = false, }, },
-      { redis_ssl_verify = { type = "boolean", required = true, default = false }, },
-      { redis_server_name = typedefs.sni },
-      { redis_timeout = { type = "number", default = 2000, }, },
-      { redis_database = { type = "integer", default = 0 }, },
-      { hide_client_headers = { type = "boolean", required = true, default = false }, },
-      { omit_consumer = { type = "string", required = true, default = "gateway" }, },
-      { limits = {
-        type = "map",
-        required = true,
-        len_min = 1,
-        keys = { type = "string", one_of = {
-          "service",
-          "consumer",
-        }, },
-        values = {
-          type = "record",
-          required = true,
-          fields = {
-            { second = { type = "number", gt = 0 }, },
-            { minute = { type = "number", gt = 0 }, },
-            { hour = { type = "number", gt = 0 }, },
-          },
-          custom_validator = validate_periods_order,
-          entity_checks = {
-            { at_least_one_of = ORDERED_PERIODS },
-          },
+    {
+      config = {
+        type = "record",
+        fields = {
+          { policy = policy },
+          { fault_tolerant = { type = "boolean", required = true, default = true }, },
+          { redis_host = typedefs.host },
+          { redis_port = typedefs.port({ default = 6379 }), },
+          { redis_password = { type = "string", len_min = 0, referenceable = true }, },
+          { redis_username = { type = "string", referenceable = true }, },
+          { redis_ssl = { type = "boolean", required = true, default = false, }, },
+          { redis_ssl_verify = { type = "boolean", required = true, default = false }, },
+          { redis_server_name = typedefs.sni },
+          { redis_timeout = { type = "number", default = 2000, }, },
+          { redis_database = { type = "integer", default = 0 }, },
+          { hide_client_headers = { type = "boolean", required = true, default = false }, },
+          -- SPDX-SnippetEnd
+          { sync_rate = { description = "How often to sync counter data to the central data store. A value of -1 results in synchronous behavior.", type = "number", required = true, default = -1 }, },
+          -- SPDX-SnippetBegin
+          -- SPDX-License-Identifier: Apache-2.0
+          -- SPDX-SnippetCopyrightText: 2025-2026 Deutsche Telekom AG
+          { omit_consumer = { type = "string", required = true, default = "gateway" }, },
+          {
+            limits = {
+              type = "map",
+              required = true,
+              len_min = 1,
+              keys = {
+                type = "string",
+                one_of = {
+                  "service",
+                  "consumer",
+                },
+              },
+              values = {
+                type = "record",
+                required = true,
+                fields = {
+                  { second = { type = "number", gt = 0 }, },
+                  { minute = { type = "number", gt = 0 }, },
+                  { hour = { type = "number", gt = 0 }, },
+                },
+                custom_validator = validate_periods_order,
+                entity_checks = {
+                  { at_least_one_of = ORDERED_PERIODS },
+                },
+              },
+            },
+          }
         },
+        custom_validator = validate_periods_order,
       },
-      }
-    },
-      custom_validator = validate_periods_order,
     },
   },
-},
 }
 -- SPDX-SnippetEnd
