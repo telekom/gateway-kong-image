@@ -221,8 +221,8 @@ curl -s -u admin:admin -X POST $KONG_ADMIN_URL/services/httpbin-service/plugins 
     "config": {
       "limits": {
         "service": {
-          "minute": 10,
-          "hour": 100
+          "minute": 200,
+          "hour": 1000
         }
       },
       "policy": "local",
@@ -410,6 +410,30 @@ test_zipkin_tracing() {
     fi
 }
 
+# Test 8: Via header removal test
+test_via_header_not_present() {
+    if [ -z "$TOKEN" ]; then
+        echo "    Skipping: No JWT token available"
+        return 0
+    fi
+
+    # Check response headers for Via
+    RESPONSE_HEADERS=$(curl -s -I $KONG_PROXY_URL/httpbin/get -H "Authorization: Bearer $TOKEN")
+    if echo "$RESPONSE_HEADERS" | grep -qi '^Via:'; then
+        echo "    Via header found in response: $(echo "$RESPONSE_HEADERS" | grep -i '^Via:')"
+        return 1
+    fi
+
+    # Check request headers forwarded to upstream via httpbin /headers
+    UPSTREAM_HEADERS=$(curl -s $KONG_PROXY_URL/httpbin/headers -H "Authorization: Bearer $TOKEN")
+    if echo "$UPSTREAM_HEADERS" | jq -e '.headers.Via // .headers.via // empty' 2>/dev/null | grep -q .; then
+        echo "    Via header found in upstream request: $(echo "$UPSTREAM_HEADERS" | jq '.headers.Via // .headers.via')"
+        return 1
+    fi
+
+    return 0
+}
+
 # Execute all tests with retry mechanism
 run_test_with_retry "Test 1: Unauthorized request" test_unauthorized_request
 if [ $? -ne 0 ]; then
@@ -442,6 +466,11 @@ if [ $? -ne 0 ]; then
 fi
 
 run_test_with_retry "Test 7: Zipkin tracing" test_zipkin_tracing
+if [ $? -ne 0 ]; then
+    TEST_FAILURES=$((TEST_FAILURES + 1))
+fi
+
+run_test_with_retry "Test 8: Via header not present" test_via_header_not_present
 if [ $? -ne 0 ]; then
     TEST_FAILURES=$((TEST_FAILURES + 1))
 fi

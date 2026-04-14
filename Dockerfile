@@ -51,6 +51,9 @@ RUN rm -rf /opt/plugins
 # Registering additional plugins which are not just a patch of existing ones
 ENV KONG_PLUGINS="bundled,jwt-keycloak,rate-limiting-merged"
 
+# Remove Via header injection from Kong core
+RUN sed -i '/enabled_headers\[conf_constants\.HEADERS\.VIA\] = true/d' /usr/local/share/lua/5.1/kong/conf_loader/init.lua
+
 # copy nginx template to bake it into the image
 COPY --chown=1000:1000 templates/nginx_kong.lua /usr/local/share/lua/5.1/kong/templates/nginx_kong.lua
 
