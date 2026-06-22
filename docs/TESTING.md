@@ -52,6 +52,7 @@ Certificates are automatically generated using a multi-stage Docker build in `Do
 - ✅ `prometheus` plugin loaded and available  
 - ✅ `rate-limiting-merged` plugin loaded and available
 - ✅ `zipkin` plugin loaded and available
+- ✅ `opentelemetry` plugin loaded and available
 
 **Purpose**: Validates that all custom plugins compile and load correctly in Kong 3.9.1
 
@@ -114,6 +115,20 @@ Certificates are automatically generated using a multi-stage Docker build in `Do
   - Tardis trace ID generation (`worker_id + "#" + counter`)
   - Custom business context headers
   - Jaeger integration with "kong-gateway" service name
+
+#### Test 9: OpenTelemetry (OTLP/HTTP) Tracing
+- **Purpose**: Verify the `opentelemetry` plugin exports spans natively via OTLP
+- **Test**:
+  1. Configure the `opentelemetry` plugin against Jaeger's OTLP endpoint
+     (`http://jaeger.docker:4318/v1/traces`) with `service.name: kong-otel`
+  2. Make an authenticated request to generate a span
+  3. Verify the OTLP-specific service appears in Jaeger
+- **Validates**:
+  - Native OTLP/protobuf export path (vendored `traces.lua`/`utils.lua`)
+  - Deutsche Telekom enrichment via `eni_enhancements.lua`
+    (`X-Tardis-Traceid` response header, logged informationally)
+  - Jaeger integration with the distinct "kong-otel" service name, proving the
+    OTLP delivery is independent of the Zipkin path
 
 ## Deutsche Telekom Customizations Tested
 

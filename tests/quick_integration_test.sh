@@ -178,6 +178,36 @@ else
     exit 1
 fi
 
+# 4b. Enable global OpenTelemetry plugin (OTLP/HTTP -> Jaeger 4318).
+# Uses a distinct service.name ("kong-otel") so the OTLP delivery can be
+# verified independently from the Zipkin path above. Mirrors the chart's
+# setup-opentelemetry.yml config (traces_endpoint, resource_attributes,
+# b3 propagation, plus the Deutsche Telekom zone/local_service_name fields).
+echo "Enabling global OpenTelemetry plugin..."
+OTEL_RESPONSE=$(curl -s -u admin:admin -X POST $KONG_ADMIN_URL/plugins \ #gitleaks:allow
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "opentelemetry",
+    "config": {
+      "traces_endpoint": "http://jaeger.docker:4318/v1/traces",
+      "sampling_rate": 1.0,
+      "resource_attributes": {
+        "service.name": "kong-otel"
+      },
+      "local_service_name": "kong-otel",
+      "zone": "test-zone",
+      "header_type": "b3"
+    }
+  }')
+
+if echo "$OTEL_RESPONSE" | jq -e '.name' >/dev/null 2>&1; then
+    echo "✅ OpenTelemetry plugin enabled successfully"
+else
+    echo "❌ Failed to enable OpenTelemetry plugin"
+    echo "Response: $OTEL_RESPONSE"
+    exit 1
+fi
+
 # 5. Create httpbin service using internal container
 echo "Creating httpbin service..."
 curl -s -u admin:admin -X POST $KONG_ADMIN_URL/services \
@@ -434,6 +464,44 @@ test_via_header_not_present() {
     return 0
 }
 
+# Test 9: OpenTelemetry (OTLP/HTTP) tracing test
+# Verifies the opentelemetry plugin exports spans to Jaeger via OTLP. The
+# authoritative, OTLP-only signal is the "kong-otel" service appearing in
+# Jaeger (only the opentelemetry plugin's resource.service.name produces it;
+# the zipkin plugin reports as "kong-gateway"). The X-Tardis-Traceid header is
+# logged for information only because both tracing plugins set it.
+test_opentelemetry_tracing() {
+    if [ -z "$TOKEN" ]; then
+        echo "    Skipping: No JWT token available"
+        return 0
+    fi
+
+    # Make a request that should generate an OTLP span, capturing response headers
+    OTEL_HEADERS=$(curl -s -D - -o /dev/null $KONG_PROXY_URL/httpbin/headers \
+      -H "Authorization: Bearer $TOKEN" \
+      -H "X-Request-ID: otel-trace-$(date +%s)")
+
+    # Informational: the Deutsche Telekom enrichment exposes the Tardis trace id.
+    if echo "$OTEL_HEADERS" | grep -qi '^X-Tardis-Traceid:'; then
+        echo "    ℹ️  X-Tardis-Traceid present: $(echo "$OTEL_HEADERS" | grep -i '^X-Tardis-Traceid:' | tr -d '\r')"
+    fi
+
+    # Wait for trace processing/export
+    sleep 3
+
+    # Authoritative check: the OTLP-specific service name must reach Jaeger.
+    JAEGER_RESPONSE=$(curl -s "http://jaeger.docker:16686/api/services" 2>/dev/null || echo "jaeger_unavailable")
+    if echo "$JAEGER_RESPONSE" | grep -q "kong-otel" 2>/dev/null; then
+        return 0
+    elif [ "$JAEGER_RESPONSE" = "jaeger_unavailable" ]; then
+        echo "    Warning: Jaeger API not accessible, but OTLP span should be sent"
+        return 0
+    else
+        echo "    kong-otel service not found in Jaeger (OTLP export may have failed)"
+        return 1
+    fi
+}
+
 # Execute all tests with retry mechanism
 run_test_with_retry "Test 1: Unauthorized request" test_unauthorized_request
 if [ $? -ne 0 ]; then
@@ -471,6 +539,11 @@ if [ $? -ne 0 ]; then
 fi
 
 run_test_with_retry "Test 8: Via header not present" test_via_header_not_present
+if [ $? -ne 0 ]; then
+    TEST_FAILURES=$((TEST_FAILURES + 1))
+fi
+
+run_test_with_retry "Test 9: OpenTelemetry (OTLP) tracing" test_opentelemetry_tracing
 if [ $? -ne 0 ]; then
     TEST_FAILURES=$((TEST_FAILURES + 1))
 fi

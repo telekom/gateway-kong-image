@@ -66,6 +66,34 @@ The `zipkin` plugin is based on Kong 3.9.1 with Deutsche Telekom enhancements:
 - Environment detection from service tags
 - Enhanced balancer tracking with error states
 
+### opentelemetry
+
+The `opentelemetry` plugin is based on Kong 3.9.1 with Deutsche Telekom
+enhancements. Kong's plugin files (`handler.lua`, `schema.lua`, `traces.lua`,
+`logs.lua`, `utils.lua`) are vendored in full for a consistent, self-contained
+source; only `handler.lua` and `schema.lua` carry Deutsche Telekom changes
+(marked with SPDX snippet headers), and an additional `eni_enhancements.lua`
+holds the shared span-enrichment logic. The core modules are vendored unmodified
+from Kong 3.9.1.
+
+It exports spans natively as **OTLP/HTTP (protobuf)** to a collector
+(`config.traces_endpoint`, e.g. `http://otel-collector:4318/v1/traces`) and
+re-attaches the same Deutsche Telekom span attributes as the `zipkin` plugin:
+
+- Tardis trace ID generation (worker_id + "#" + counter), the
+  `x-tardis-traceid` upstream request header and `X-Tardis-Traceid` response
+  header, plus the `x-tardis-consumer-side` marker on consumer-originated traces
+- Business context headers (x-request-id, x-business-context, x-correlation-id)
+- Horizon PubSub headers (publisher / subscriber)
+- `lc` (local service name) and `zone` tags
+- `/admin-api` requests excluded from sampling
+
+Wire propagation defaults to **B3**, so trace continuity with Jumper and the
+Tardis trace ID flow is preserved. The `zipkin` and `opentelemetry` plugins are
+both shipped in the image; the Helm chart selects exactly one at runtime
+(`tracing.exporter: zipkin|otlp`). Native span generation requires
+`KONG_TRACING_INSTRUMENTATIONS` and `KONG_TRACING_SAMPLING_RATE` to be set.
+
 ## Documentation
 
 - **[Production Migration Guide](docs/PRODUCTION-MIGRATION.md)**: Comprehensive guide for migrating from Kong 2.8.3 to Kong 3.9.1 in production environments with AWS Aurora PostgreSQL
