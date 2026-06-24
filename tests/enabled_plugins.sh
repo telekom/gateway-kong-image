@@ -5,7 +5,7 @@
 
 check_plugin() {
   PLUGIN_NAME=$1
-  RESPONSE=$(curl -s -u admin:admin ${KONG_ADMIN_URL}/plugins/enabled)
+  RESPONSE=$(curl -s -u admin:admin ${KONG_ADMIN_URL}/plugins/enabled) #gitleaks:allow
   if echo "$RESPONSE" | grep -q "\"$PLUGIN_NAME\""; then
     echo "✅  Plugin $PLUGIN_NAME is enabled."
   else
@@ -19,4 +19,5 @@ enabled_plugins() {
   check_plugin "prometheus"
   check_plugin "rate-limiting-merged"
   check_plugin "zipkin"
+  check_plugin "opentelemetry"
 }

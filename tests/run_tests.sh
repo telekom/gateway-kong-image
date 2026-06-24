@@ -7,7 +7,7 @@
 # Tests all custom plugins and Deutsche Telekom customizations
 
 echo "🚀 Kong 3.9.1 Migration Test Suite"
-echo "📋 Testing: JWT-Keycloak, Prometheus, Rate-Limiting-Merged, Zipkin plugins"
+echo "📋 Testing: JWT-Keycloak, Prometheus, Rate-Limiting-Merged, Zipkin, OpenTelemetry plugins"
 echo ""
 
 # include _env.sh
