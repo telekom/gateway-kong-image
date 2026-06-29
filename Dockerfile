@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-ARG KONG_VERSION=3.9.1
+ARG KONG_VERSION=3.9.3
 
 FROM kong:${KONG_VERSION} AS jwt-keycloak-builder
 
