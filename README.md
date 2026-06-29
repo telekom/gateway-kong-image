@@ -9,7 +9,7 @@ SPDX-License-Identifier: CC0-1.0
 ## Overview
 
 This repository contains a custom Kong distribution for the Open Telekom Integration
-Platform (O28M). The API Gateway is based on **Kong OSS 3.9.1** with comprehensive customizations.
+Platform (O28M). The API Gateway is based on **Kong OSS 3.9.3** with comprehensive customizations.
 
 The plugins within this repository are based on the official Kong 3.9.1 plugins and have been enhanced with
 Deutsche Telekom-specific features including memory optimization, enhanced consumer tracking, latency spike prevention,
@@ -137,7 +137,7 @@ both shipped in the image; the Helm chart selects exactly one at runtime
 ## Docker Compose Services
 
 - **kong_init:** Initializes the Kong database with migrations
-- **kong:** Runs the Kong 3.9.1 API Gateway with custom plugins
+- **kong:** Runs the Kong 3.9.3 API Gateway with custom plugins
 - **postgres:** PostgreSQL database for Kong
 - **iris:** Keycloak identity provider with HTTP/HTTPS support
 - **jaeger:** Jaeger tracing collector and UI
@@ -149,14 +149,14 @@ both shipped in the image; the Helm chart selects exactly one at runtime
 The `Dockerfile` is used to build a custom Kong OSS image with the `jwt-keycloak` and `rate-limiting-merged` plugins as
 well as patched versions of `prometheus` and `zipkin`.
 
-The Dockerfile is based on the official Kong 3.9.1 OSS image and includes:
+The Dockerfile is based on the official Kong 3.9.3 OSS image and includes:
 
 - Build and install the external plugin `jwt-keycloak` via `luarocks`
 - Add the `rate-limiting-merged` plugin with Kong 3.9.1 PDK APIs
 - Enhanced `prometheus` plugin with Deutsche Telekom customizations
 - Enhanced `zipkin` plugin with Kong 3.9.1 observability framework
 
-**Kong OSS version:** 3.9.1 (Latest with AI Gateway capabilities)
+**Kong OSS version:** 3.9.3 (Latest with AI Gateway capabilities)
 
 ## Deutsche Telekom Customizations
 
