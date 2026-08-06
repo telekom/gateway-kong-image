@@ -192,6 +192,28 @@ function _M.enrich_root_span(conf)
     set_attr(span, "http.protocol", "HTTP/" .. http_version)
   end
 
+  -- Overwrite the native `http.url` attribute set by Kong's request
+  -- instrumentation. Kong builds it as scheme .. "://" .. host .. request_uri,
+  -- and request_uri still carries the query string, which may contain
+  -- security-sensitive data. Rebuild the same value without the query using
+  -- only public request APIs: get_path() returns request_uri truncated at the
+  -- first "?" with the original percent-encoding preserved, so the result is a
+  -- byte-for-byte prefix of the native URL (no decoding/re-encoding involved).
+  -- Always overwrite when a path is available so no query string can leak, even
+  -- if scheme/host are somehow unavailable.
+  local path = kong.request.get_path()
+  if path then
+    local scheme = kong.request.get_scheme()
+    local host = kong.request.get_host()
+    local sanitized_url
+    if scheme and host then
+      sanitized_url = scheme .. "://" .. host .. path
+    else
+      sanitized_url = path
+    end
+    set_attr(span, "http.url", sanitized_url)
+  end
+
   -- Kong runtime attributes (zipkin parity: kong.consumer / kong.pod)
   local consumer = ngx.ctx.authenticated_consumer
   if consumer and consumer.custom_id then
