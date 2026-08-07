@@ -115,6 +115,7 @@ return {
         -- Deutsche Telekom customizations: span enrichment configuration that
         -- mirrors the enhanced zipkin plugin so the OTLP path carries the same
         -- Tardis / business / zone attributes (see eni_enhancements.lua).
+        { environment = { description = "Environment tag for traces. Auto-detected from service tags when unset or set to the sentinel value `qa`; any other explicit value overrides auto-detection.", type = "string", default = nil } },
         { zone = { description = "Zone tag for traces to identify the deployment zone.", type = "string", default = nil } },
         { local_service_name = { description = "Local service name used for the `lc` span attribute for Tardis trace identification.", type = "string", default = "kong" } },
         -- SPDX-SnippetEnd
