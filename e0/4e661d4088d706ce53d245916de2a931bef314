@@ -1,0 +1,20 @@
+.github/workflows/build.yml
+  s_01af7015b83ac0::t_67c005a9ef5e7f 72,75
+  s_01af7015b83ac0::t_6f407204b78e2e 69,73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "e04e661d4088d706ce53d245916de2a931bef314",
+  "prompts": {},
+  "sessions": {
+    "s_01af7015b83ac0": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f93e7219fffeibgHfL6B1prFPI",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "luis.pflamminger@telekom.de <luis.pflamminger@telekom.de>"
+    }
+  }
+}
