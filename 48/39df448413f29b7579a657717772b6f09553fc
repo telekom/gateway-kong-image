@@ -1,0 +1,19 @@
+.github/workflows/build.yml
+  s_01af7015b83ac0::t_65bc2c4fcc4b3a 69,72,75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "4839df448413f29b7579a657717772b6f09553fc",
+  "prompts": {},
+  "sessions": {
+    "s_01af7015b83ac0": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f93e7219fffeibgHfL6B1prFPI",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": null
+    }
+  }
+}
