@@ -1,0 +1,22 @@
+README.md
+  h_65f5d22af11f8f 50-61
+docs/TESTING.md
+  h_65f5d22af11f8f 140,251
+plugins/prometheus/exporter.lua
+  h_65f5d22af11f8f 48-75,154-156,160,166,169,174,179,198,203,214-216,221,228,303-306,349-359
+tests/quick_integration_test.sh
+  h_65f5d22af11f8f 2,187-188,307-339,539-629,676-681,713
+tests/run_tests.sh
+  h_65f5d22af11f8f 2,9-10,36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "b389ea87ddd1aa9e1064b49f12989cb43ecf4db3",
+  "prompts": {},
+  "humans": {
+    "h_65f5d22af11f8f": {
+      "author": "Miká Juznik <mika.juznik@telekom.de>"
+    }
+  }
+}
