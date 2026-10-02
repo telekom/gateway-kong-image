@@ -1,0 +1,14 @@
+.github/workflows/test.yml
+  h_65f5d22af11f8f 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "8378ddade42ad3178feac7a4f823b787a24ca1a9",
+  "prompts": {},
+  "humans": {
+    "h_65f5d22af11f8f": {
+      "author": "Miká Juznik <mika.juznik@telekom.de>"
+    }
+  }
+}
