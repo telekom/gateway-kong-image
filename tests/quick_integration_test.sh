@@ -304,26 +304,28 @@ curl -s -u admin:admin -X POST $KONG_ADMIN_URL/routes/httpbin-route/plugins \
   }' || echo "ACL plugin may already exist"
 echo "✅ ACL plugin configured"
 
-TRAFFIC_CASES=$(jq -n --arg prefix 'ei__telekom__de--apiexposure__variant---' '
+TRAFFIC_CASES=$(jq -n --arg prefix 'ei__telekom__de--apiexposure__variant---' --arg new_prefix 'variant--' '
   [{name: "api", variants: ["default"], expected: "api"},
    {name: "mcp", variants: ["mcp"], expected: "mcp"},
    {name: "telecontextmcp", variants: ["telecontextmcp"], expected: "telecontextmcp"},
    {name: "a2a", variants: ["agent"], expected: "a2a"},
-   {name: "missing", variants: [], expected: "unknown"},
-   {name: "invalid", variants: ["invalid"], expected: "unknown"},
-   {name: "uppercase", variants: ["MCP"], expected: "unknown"},
-   {name: "empty", variants: [""], expected: "unknown"},
-   {name: "conflict", variants: ["mcp", "agent"], expected: "unknown"},
-   {name: "reverse", variants: ["agent", "mcp"], expected: "unknown"},
-   {name: "mixed", variants: ["mcp", "invalid"], expected: "unknown"},
-   {name: "mixed-reverse", variants: ["invalid", "mcp"], expected: "unknown"},
-   {name: "duplicate", variants: ["mcp", "mcp"], expected: "mcp"},
-   {name: "forbidden", variants: ["agent"], expected: "a2a"},
-   {name: "disabled", variants: ["mcp"], expected: "mcp"},
-   {name: "test-sse-omission", variants: ["telecontextmcp"], expected: "telecontextmcp"},
-   {name: "events", variants: ["mcp"], expected: "mcp"}]
-  | map(. + {tags: (.variants | map($prefix + .))})
-  + [{name: "unrelated", tags: ["other-" + $prefix + "mcp"], expected: "unknown"}]
+    {name: "missing", variants: [], expected: "other"},
+    {name: "invalid", variants: ["invalid"], expected: "other"},
+    {name: "uppercase", variants: ["MCP"], expected: "other"},
+    {name: "empty", variants: [""], expected: "other"},
+    {name: "conflict", variants: ["mcp", "agent"], expected: "other"},
+    {name: "reverse", variants: ["agent", "mcp"], expected: "other"},
+    {name: "mixed", variants: ["mcp", "invalid"], expected: "other"},
+    {name: "mixed-reverse", variants: ["invalid", "mcp"], expected: "other"},
+    {name: "duplicate", variants: ["mcp", "mcp"], expected: "mcp"}] as $cases
+   | ($cases + [{name: "forbidden", variants: ["agent"], expected: "a2a"},
+    {name: "disabled", variants: ["mcp"], expected: "mcp"},
+    {name: "test-sse-omission", variants: ["telecontextmcp"], expected: "telecontextmcp"},
+    {name: "events", variants: ["mcp"], expected: "mcp"}]
+     | map(. + {tags: (.variants | map($prefix + .))}))
+   + ($cases | map(. + {name: ("new-" + .name), tags: (.variants | map($new_prefix + .))}))
+   + [{name: "unrelated", tags: ["other-" + $prefix + "mcp"], expected: "other"},
+      {name: "new-unrelated", tags: ["other-" + $new_prefix + "mcp", "env--test", "route--test"], expected: "other"}]
 ')
 for traffic_case in $(echo "$TRAFFIC_CASES" | jq -r '.[].name'); do
     ROUTE_BODY=$(echo "$TRAFFIC_CASES" | jq --arg name "$traffic_case" \
@@ -551,12 +553,12 @@ traffic_event_count() {
 test_traffic_route_update() {
     local status
     status=$(curl -sS --max-time 15 -o /dev/null -w '%{http_code}' \
-        "$KONG_PROXY_URL/traffic-mcp/get" -H "Authorization: Bearer $TOKEN")
+        "$KONG_PROXY_URL/traffic-new-mcp/get" -H "Authorization: Bearer $TOKEN")
     test "$status" = 200 || return 1
     sleep 2
     TRAFFIC_METRICS=$(curl -fsS -u admin:admin "$KONG_ADMIN_URL/metrics") || return 1
-    assert_traffic_metric kong_http_requests_total mcp a2a 'code="200"' || return 1
-    assert_traffic_metric kong_http_requests_total mcp mcp 'code="200"' || return 1
+    assert_traffic_metric kong_http_requests_total new-mcp a2a 'code="200"' || return 1
+    assert_traffic_metric kong_http_requests_total new-mcp mcp 'code="200"' || return 1
 }
 
 test_traffic_classification() {
@@ -621,9 +623,9 @@ test_traffic_classification() {
         return 1
     fi
 
-    curl -fsS -u admin:admin -X PATCH "$KONG_ADMIN_URL/routes/traffic-mcp" \
+    curl -fsS -u admin:admin -X PATCH "$KONG_ADMIN_URL/routes/traffic-new-mcp" \
         -H 'Content-Type: application/json' \
-        -d '{"tags":["ei__telekom__de--apiexposure__variant---agent"]}' >/dev/null || return 1
+        -d '{"tags":["variant--agent"]}' >/dev/null || return 1
     run_test_with_retry "Traffic route update" test_traffic_route_update
 }
 

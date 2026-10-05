@@ -48,7 +48,10 @@ local LATENCY_OMIT_PATTERN = "-sse-"
 -- SPDX-SnippetBegin
 -- SPDX-License-Identifier: Apache-2.0
 -- SPDX-SnippetCopyrightText: 2026 Deutsche Telekom AG
-local VARIANT_TAG_PREFIX = "ei__telekom__de--apiexposure__variant---"
+-- TODO: Remove legacy prefix support and its tests once all route producers and
+-- existing routes use variant-- and rollback no longer requires the legacy format.
+local LEGACY_VARIANT_TAG_PREFIX = "ei__telekom__de--apiexposure__variant---"
+local VARIANT_TAG_PREFIX = "variant--"
 local TRAFFIC_TYPES = {
   default = "api",
   mcp = "mcp",
@@ -59,18 +62,24 @@ local TRAFFIC_TYPES = {
 local function traffic_type_from_route(route)
   local traffic_type
   for _, tag in ipairs(route.tags or {}) do
+    local variant
     if tag:sub(1, #VARIANT_TAG_PREFIX) == VARIANT_TAG_PREFIX then
-      local variant = tag:sub(#VARIANT_TAG_PREFIX + 1)
+      variant = tag:sub(#VARIANT_TAG_PREFIX + 1)
+    elseif tag:sub(1, #LEGACY_VARIANT_TAG_PREFIX) == LEGACY_VARIANT_TAG_PREFIX then
+      variant = tag:sub(#LEGACY_VARIANT_TAG_PREFIX + 1)
+    end
+
+    if variant then
       local candidate = TRAFFIC_TYPES[variant]
 
       if not candidate or (traffic_type and traffic_type ~= candidate) then
-        return "unknown"
+        return "other"
       end
 
       traffic_type = candidate
     end
   end
-  return traffic_type or "unknown"
+  return traffic_type or "other"
 end
 -- SPDX-SnippetEnd
 local IS_PROMETHEUS_ENABLED
