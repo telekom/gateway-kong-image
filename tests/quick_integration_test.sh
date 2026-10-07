@@ -1,5 +1,5 @@
 #!/bin/sh
-# SPDX-FileCopyrightText: 2025 Deutsche Telekom AG
+# SPDX-FileCopyrightText: 2025-2026 Deutsche Telekom AG
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -184,7 +184,7 @@ fi
 # setup-opentelemetry.yml config (traces_endpoint, resource_attributes,
 # b3 propagation, plus the Deutsche Telekom zone/local_service_name fields).
 echo "Enabling global OpenTelemetry plugin..."
-OTEL_RESPONSE=$(curl -s -u admin:admin -X POST $KONG_ADMIN_URL/plugins \ #gitleaks:allow
+OTEL_RESPONSE=$(curl -s -X POST $KONG_ADMIN_URL/plugins \
   -H "Content-Type: application/json" \
   -d '{
     "name": "opentelemetry",
@@ -198,7 +198,7 @@ OTEL_RESPONSE=$(curl -s -u admin:admin -X POST $KONG_ADMIN_URL/plugins \ #gitlea
       "zone": "test-zone",
       "header_type": "b3"
     }
-  }')
+  }' -u admin:admin) #gitleaks:allow
 
 if echo "$OTEL_RESPONSE" | jq -e '.name' >/dev/null 2>&1; then
     echo "✅ OpenTelemetry plugin enabled successfully"
@@ -302,6 +302,41 @@ curl -s -u admin:admin -X POST $KONG_ADMIN_URL/routes/httpbin-route/plugins \
     }
   }' || echo "ACL plugin may already exist"
 echo "✅ ACL plugin configured"
+
+TRAFFIC_CASES=$(jq -n --arg prefix 'ei__telekom__de--apiexposure__variant---' --arg new_prefix 'variant--' '
+  [{name: "api", variants: ["default"], expected: "api"},
+   {name: "mcp", variants: ["mcp"], expected: "mcp"},
+   {name: "telecontextmcp", variants: ["telecontextmcp"], expected: "telecontextmcp"},
+   {name: "a2a", variants: ["agent"], expected: "a2a"},
+    {name: "missing", variants: [], expected: "other"},
+    {name: "invalid", variants: ["invalid"], expected: "other"},
+    {name: "uppercase", variants: ["MCP"], expected: "other"},
+    {name: "empty", variants: [""], expected: "other"},
+    {name: "conflict", variants: ["mcp", "agent"], expected: "other"},
+    {name: "reverse", variants: ["agent", "mcp"], expected: "other"},
+    {name: "mixed", variants: ["mcp", "invalid"], expected: "other"},
+    {name: "mixed-reverse", variants: ["invalid", "mcp"], expected: "other"},
+    {name: "duplicate", variants: ["mcp", "mcp"], expected: "mcp"}] as $cases
+   | ($cases + [{name: "forbidden", variants: ["agent"], expected: "a2a"},
+    {name: "disabled", variants: ["mcp"], expected: "mcp"},
+    {name: "test-sse-omission", variants: ["telecontextmcp"], expected: "telecontextmcp"},
+    {name: "events", variants: ["mcp"], expected: "mcp"}]
+     | map(. + {tags: (.variants | map($prefix + .))}))
+   + ($cases | map(. + {name: ("new-" + .name), tags: (.variants | map($new_prefix + .))}))
+   + [{name: "unrelated", tags: ["other-" + $prefix + "mcp"], expected: "other"},
+      {name: "new-unrelated", tags: ["other-" + $new_prefix + "mcp", "env--test", "route--test"], expected: "other"}]
+')
+for traffic_case in $(echo "$TRAFFIC_CASES" | jq -r '.[].name'); do
+    ROUTE_BODY=$(echo "$TRAFFIC_CASES" | jq --arg name "$traffic_case" \
+        '.[] | select(.name == $name) | {name: ("traffic-" + .name), paths: ["/traffic-" + .name], tags: .tags}')
+    curl -fsS -u admin:admin -X POST "$KONG_ADMIN_URL/services/httpbin-service/routes" \
+        -H 'Content-Type: application/json' -d "$ROUTE_BODY" >/dev/null
+done
+curl -fsS -u admin:admin -X POST "$KONG_ADMIN_URL/routes/traffic-forbidden/plugins" \
+    -H 'Content-Type: application/json' -d '{"name":"acl","config":{"allow":["denied-group"]}}' >/dev/null
+curl -fsS -u admin:admin -X POST "$KONG_ADMIN_URL/routes/traffic-disabled/plugins" \
+    -H 'Content-Type: application/json' \
+    -d '{"name":"prometheus","config":{"status_code_metrics":false,"bandwidth_metrics":false,"latency_metrics":false}}' >/dev/null
 
 echo "🔗 Configuration setup completed "
 # --- End of configuration setup ---
@@ -502,6 +537,98 @@ test_opentelemetry_tracing() {
     fi
 }
 
+assert_traffic_metric() {
+    echo "$TRAFFIC_METRICS" | grep "^$1{" | grep -F "route=\"traffic-$2\"" | \
+        grep -F "traffic_type=\"$3\"" | \
+        grep -E 'workspace="[^"]*",traffic_type="[^"]*",consumer=' | grep -E "$4" >/dev/null || {
+        echo "    Missing $1 for traffic-$2 with traffic_type=$3"
+        return 1
+    }
+}
+
+traffic_event_count() {
+    echo "$TRAFFIC_METRICS" | awk '/^kong_http_requests_total\{/ && /route="traffic-events"/ {total += $NF} END {print total+0}'
+}
+
+test_traffic_route_update() {
+    local status
+    status=$(curl -sS --max-time 15 -o /dev/null -w '%{http_code}' \
+        "$KONG_PROXY_URL/traffic-new-mcp/get" -H "Authorization: Bearer $TOKEN")
+    test "$status" = 200 || return 1
+    sleep 2
+    TRAFFIC_METRICS=$(curl -fsS -u admin:admin "$KONG_ADMIN_URL/metrics") || return 1
+    assert_traffic_metric kong_http_requests_total new-mcp a2a 'code="200"' || return 1
+    assert_traffic_metric kong_http_requests_total new-mcp mcp 'code="200"' || return 1
+}
+
+test_traffic_classification() {
+    local route traffic_type status stream_pid event_count
+    test -n "$TOKEN" || return 1
+    for route in $(echo "$TRAFFIC_CASES" | jq -r '.[].name | select(. != "forbidden" and . != "events")'); do
+        status=$(curl -sS --max-time 15 -o /dev/null -w '%{http_code}' \
+            "$KONG_PROXY_URL/traffic-$route/get" -H "Authorization: Bearer $TOKEN" -H 'X-Traffic-Type: api')
+        test "$status" = 200 || return 1
+    done
+    status=$(curl -sS --max-time 15 -o /dev/null -w '%{http_code}' "$KONG_PROXY_URL/traffic-mcp/get")
+    test "$status" = 401 || return 1
+    status=$(curl -sS --max-time 15 -o /dev/null -w '%{http_code}' \
+        "$KONG_PROXY_URL/traffic-forbidden/get" -H "Authorization: Bearer $TOKEN")
+    test "$status" = 403 || return 1
+    status=$(curl -sS --max-time 15 -o /dev/null -w '%{http_code}' \
+        "$KONG_PROXY_URL/traffic-mcp/status/502" -H "Authorization: Bearer $TOKEN")
+    test "$status" = 502 || return 1
+    status=$(curl -sS --max-time 15 -o /dev/null -w '%{http_code}' \
+        "$KONG_PROXY_URL/traffic-unmatched" -H "Authorization: Bearer $TOKEN")
+    test "$status" = 404 || return 1
+
+    TRAFFIC_METRICS=$(curl -fsS -u admin:admin "$KONG_ADMIN_URL/metrics") || return 1
+    event_count=$(traffic_event_count)
+    curl -fsS --max-time 15 -o /dev/null "$KONG_PROXY_URL/traffic-events/sse?duration=4&count=2&delay=0" \
+        -H "Authorization: Bearer $TOKEN" &
+    stream_pid=$!
+    sleep 1
+    TRAFFIC_METRICS=$(curl -fsS -u admin:admin "$KONG_ADMIN_URL/metrics") || return 1
+    if [ "$(traffic_event_count)" != "$event_count" ]; then
+        echo "    SSE request recorded before completion"
+        wait "$stream_pid"
+        return 1
+    fi
+    wait "$stream_pid" || return 1
+    sleep 2
+    TRAFFIC_METRICS=$(curl -fsS -u admin:admin "$KONG_ADMIN_URL/metrics") || return 1
+    test "$(traffic_event_count)" -eq "$((event_count + 1))" || return 1
+    for route in $(echo "$TRAFFIC_CASES" | jq -r '.[].name | select(. != "forbidden" and . != "disabled" and . != "test-sse-omission")'); do
+        traffic_type=$(echo "$TRAFFIC_CASES" | jq -r --arg name "$route" '.[] | select(.name == $name) | .expected')
+        assert_traffic_metric kong_http_requests_total "$route" "$traffic_type" 'code="200"' || return 1
+        for direction in ingress egress; do
+            assert_traffic_metric kong_bandwidth_bytes "$route" "$traffic_type" "direction=\"$direction\"" || return 1
+        done
+        for family in request_latency_ms kong_latency_ms upstream_latency_ms; do
+            for suffix in bucket sum count; do
+                assert_traffic_metric "kong_${family}_${suffix}" "$route" "$traffic_type" ' [0-9]' || return 1
+            done
+            assert_traffic_metric "kong_${family}_bucket" "$route" "$traffic_type" 'le="\+Inf"' || return 1
+        done
+    done
+    assert_traffic_metric kong_http_requests_total mcp mcp 'code="401",source="kong"' || return 1
+    assert_traffic_metric kong_http_requests_total mcp mcp 'code="502",source="service"' || return 1
+    assert_traffic_metric kong_http_requests_total forbidden a2a 'code="403",source="kong"' || return 1
+    assert_traffic_metric kong_http_requests_total test-sse-omission telecontextmcp 'code="200"' || return 1
+    if echo "$TRAFFIC_METRICS" | grep -E '^kong_(http_requests_total|bandwidth_bytes|.*latency_ms_(bucket|sum|count))\{' | grep -F 'route="traffic-disabled"'; then
+        echo "    Disabled metrics were recorded"
+        return 1
+    fi
+    if echo "$TRAFFIC_METRICS" | grep '^kong_.*latency_ms_' | grep -F 'route="traffic-test-sse-omission"'; then
+        echo "    Existing latency omission changed"
+        return 1
+    fi
+
+    curl -fsS -u admin:admin -X PATCH "$KONG_ADMIN_URL/routes/traffic-new-mcp" \
+        -H 'Content-Type: application/json' \
+        -d '{"tags":["variant--agent"]}' >/dev/null || return 1
+    run_test_with_retry "Traffic route update" test_traffic_route_update
+}
+
 # Execute all tests with retry mechanism
 run_test_with_retry "Test 1: Unauthorized request" test_unauthorized_request
 if [ $? -ne 0 ]; then
@@ -547,6 +674,12 @@ run_test_with_retry "Test 9: OpenTelemetry (OTLP) tracing" test_opentelemetry_tr
 if [ $? -ne 0 ]; then
     TEST_FAILURES=$((TEST_FAILURES + 1))
 fi
+
+test_traffic_classification || {
+    echo "❌ HTTP traffic classification failed"
+    exit 1
+}
+echo "✅ HTTP traffic classification passed"
 
 # Final result
 echo ""

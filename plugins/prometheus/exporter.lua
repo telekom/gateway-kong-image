@@ -45,6 +45,43 @@ local O28M_ENI_LATENCY_BUCKETS = { 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 200
 local HORIZON_CONSUMER = "eventstore"
 local LATENCY_OMIT_PATTERN = "-sse-"
 -- SPDX-SnippetEnd
+-- SPDX-SnippetBegin
+-- SPDX-License-Identifier: Apache-2.0
+-- SPDX-SnippetCopyrightText: 2026 Deutsche Telekom AG
+-- TODO: Remove legacy prefix support and its tests once all route producers and
+-- existing routes use variant-- and rollback no longer requires the legacy format.
+local LEGACY_VARIANT_TAG_PREFIX = "ei__telekom__de--apiexposure__variant---"
+local VARIANT_TAG_PREFIX = "variant--"
+local TRAFFIC_TYPES = {
+  default = "api",
+  mcp = "mcp",
+  telecontextmcp = "telecontextmcp",
+  agent = "a2a",
+}
+
+local function traffic_type_from_route(route)
+  local traffic_type
+  for _, tag in ipairs(route.tags or {}) do
+    local variant
+    if tag:sub(1, #VARIANT_TAG_PREFIX) == VARIANT_TAG_PREFIX then
+      variant = tag:sub(#VARIANT_TAG_PREFIX + 1)
+    elseif tag:sub(1, #LEGACY_VARIANT_TAG_PREFIX) == LEGACY_VARIANT_TAG_PREFIX then
+      variant = tag:sub(#LEGACY_VARIANT_TAG_PREFIX + 1)
+    end
+
+    if variant then
+      local candidate = TRAFFIC_TYPES[variant]
+
+      if not candidate or (traffic_type and traffic_type ~= candidate) then
+        return "other"
+      end
+
+      traffic_type = candidate
+    end
+  end
+  return traffic_type or "other"
+end
+-- SPDX-SnippetEnd
 local IS_PROMETHEUS_ENABLED
 
 
@@ -123,28 +160,32 @@ local function init()
   metrics.memory_stats = memory_stats
 
   -- per service/route
+  -- SPDX-SnippetBegin
+  -- SPDX-License-Identifier: Apache-2.0
+  -- SPDX-SnippetCopyrightText: 2026 Deutsche Telekom AG
   if http_subsystem then
     metrics.status = prometheus:counter("http_requests_total",
                                         "HTTP status codes per consumer/service/route in Kong",
-                                        {"service", "route", "code", "source", "workspace", "consumer", "method"})
+                                        {"service", "route", "code", "source", "workspace", "traffic_type", "consumer", "method"})
   else
     metrics.status = prometheus:counter("stream_sessions_total",
                                         "Stream status codes per service/route in Kong",
                                         {"service", "route", "code", "source", "workspace"})
   end
+  -- SPDX-SnippetEnd
   -- SPDX-SnippetBegin
   -- SPDX-License-Identifier: Apache-2.0
-  -- SPDX-SnippetCopyrightText: 2025 Deutsche Telekom AG
+  -- SPDX-SnippetCopyrightText: 2025-2026 Deutsche Telekom AG
   if http_subsystem then
     metrics.kong_latency = prometheus:histogram("kong_latency_ms",
                                                 "Latency added by Kong and enabled plugins " ..
                                                 "for each service/route in Kong",
-                                                {"service", "route", "workspace", "consumer"},
+                                                {"service", "route", "workspace", "traffic_type", "consumer"},
                                                 O28M_ENI_LATENCY_BUCKETS)
     metrics.upstream_latency = prometheus:histogram("upstream_latency_ms",
                                                     "Latency added by upstream response " ..
                                                     "for each service/route in Kong",
-                                                    {"service", "route", "workspace", "consumer"},
+                                                    {"service", "route", "workspace", "traffic_type", "consumer"},
                                                     O28M_ENI_LATENCY_BUCKETS)
   else
     metrics.kong_latency = prometheus:histogram("kong_latency_ms",
@@ -163,12 +204,12 @@ local function init()
 
   -- SPDX-SnippetBegin
   -- SPDX-License-Identifier: Apache-2.0
-  -- SPDX-SnippetCopyrightText: 2025 Deutsche Telekom AG
+  -- SPDX-SnippetCopyrightText: 2025-2026 Deutsche Telekom AG
   if http_subsystem then
     metrics.total_latency = prometheus:histogram("request_latency_ms",
                                                  "Total latency incurred during requests " ..
                                                  "for each service/route in Kong",
-                                                 {"service", "route", "workspace", "consumer"},
+                                                 {"service", "route", "workspace", "traffic_type", "consumer"},
                                                  O28M_ENI_LATENCY_BUCKETS)
   else
     metrics.total_latency = prometheus:histogram("session_duration_ms",
@@ -179,17 +220,21 @@ local function init()
   end
   -- SPDX-SnippetEnd
 
+  -- SPDX-SnippetBegin
+  -- SPDX-License-Identifier: Apache-2.0
+  -- SPDX-SnippetCopyrightText: 2026 Deutsche Telekom AG
   if http_subsystem then
     metrics.bandwidth = prometheus:counter("bandwidth_bytes",
                                           "Total bandwidth (ingress/egress) " ..
                                           "throughput in bytes",
-                                          {"service", "route", "direction", "workspace","consumer"})
+                                          {"service", "route", "direction", "workspace", "traffic_type", "consumer"})
   else -- stream has no consumer
     metrics.bandwidth = prometheus:counter("bandwidth_bytes",
                                           "Total bandwidth (ingress/egress) " ..
                                           "throughput in bytes",
                                           {"service", "route", "direction", "workspace"})
   end
+  -- SPDX-SnippetEnd
 
   -- AI mode
   metrics.ai_llm_requests = prometheus:counter("ai_llm_requests_total",
@@ -262,12 +307,12 @@ end
 
 -- Since in the prometheus library we create a new table for each diverged label
 -- so putting the "more dynamic" label at the end will save us some memory
-local labels_table_bandwidth = {0, 0, 0, 0, 0}
-local labels_table_status = {0, 0, 0, 0, 0, 0, 0}
 -- SPDX-SnippetBegin
 -- SPDX-License-Identifier: Apache-2.0
--- SPDX-SnippetCopyrightText: 2025 Deutsche Telekom AG
-local labels_table_latency = {0, 0, 0, 0}  -- service, route, workspace, consumer
+-- SPDX-SnippetCopyrightText: 2025-2026 Deutsche Telekom AG
+local labels_table_bandwidth = {0, 0, 0, 0, 0, http_subsystem and 0 or nil}
+local labels_table_status = {0, 0, 0, 0, 0, 0, 0, http_subsystem and 0 or nil}
+local labels_table_latency = {0, 0, 0, 0, http_subsystem and 0 or nil}
 -- SPDX-SnippetEnd
 local upstream_target_addr_health_table = {
   { value = 0, labels = { 0, 0, 0, "healthchecks_off", ngx.config.subsystem } },
@@ -310,6 +355,17 @@ local function log(message, serialized)
     return
   end
 
+  -- SPDX-SnippetBegin
+  -- SPDX-License-Identifier: Apache-2.0
+  -- SPDX-SnippetCopyrightText: 2026 Deutsche Telekom AG
+  if http_subsystem then
+    local traffic_type = traffic_type_from_route(message.route)
+    labels_table_status[6] = traffic_type
+    labels_table_bandwidth[5] = traffic_type
+    labels_table_latency[4] = traffic_type
+  end
+  -- SPDX-SnippetEnd
+
   local consumer = ""
   if http_subsystem then
     if message and serialized.consumer ~= nil then
@@ -336,7 +392,11 @@ local function log(message, serialized)
     labels_table_bandwidth[1] = service_name
     labels_table_bandwidth[2] = route_name
     labels_table_bandwidth[4] = workspace
-    labels_table_bandwidth[5] = consumer
+    -- SPDX-SnippetBegin
+    -- SPDX-License-Identifier: Apache-2.0
+    -- SPDX-SnippetCopyrightText: 2026 Deutsche Telekom AG
+    labels_table_bandwidth[http_subsystem and 6 or 5] = consumer
+    -- SPDX-SnippetEnd
 
     local ingress_size = serialized.ingress_size
     if ingress_size and ingress_size > 0 then
@@ -363,22 +423,26 @@ local function log(message, serialized)
     end
 
     labels_table_status[5] = workspace
-    labels_table_status[6] = consumer
-    labels_table_status[7] = serialized.method or "unknown"
+    -- SPDX-SnippetBegin
+    -- SPDX-License-Identifier: Apache-2.0
+    -- SPDX-SnippetCopyrightText: 2026 Deutsche Telekom AG
+    labels_table_status[http_subsystem and 7 or 6] = consumer
+    labels_table_status[http_subsystem and 8 or 7] = serialized.method or "unknown"
+    -- SPDX-SnippetEnd
 
     metrics.status:inc(1, labels_table_status)
   end
 
   -- SPDX-SnippetBegin
   -- SPDX-License-Identifier: Apache-2.0
-  -- SPDX-SnippetCopyrightText: 2025 Deutsche Telekom AG
+  -- SPDX-SnippetCopyrightText: 2025-2026 Deutsche Telekom AG
   if serialized.latencies and not find(route_name, LATENCY_OMIT_PATTERN) then
     labels_table_latency[1] = service_name
     labels_table_latency[2] = route_name
     labels_table_latency[3] = workspace
     
     if http_subsystem then
-      labels_table_latency[4] = consumer  -- Add consumer for HTTP subsystem
+      labels_table_latency[5] = consumer  -- Add consumer for HTTP subsystem
   -- SPDX-SnippetEnd
       
       local request_latency = serialized.latencies.request

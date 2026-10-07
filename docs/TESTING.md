@@ -137,6 +137,9 @@ Certificates are automatically generated using a multi-stage Docker build in `Do
 - **HORIZON_CONSUMER**: Special Pubsub-Horizon consumer handling
 - **Enhanced Consumer Tracking**: Consumer labels on all latency metrics
 - **Yield Mechanisms**: Non-blocking metrics collection
+- Traffic classification from route tags via the `traffic_type` label on HTTP metrics
+- Both `variant--` and legacy variant tags, tested separately, and variant
+  updates using the new prefix
 
 ### Rate-Limiting-Merged Plugin Customizations  
 - **Multi-dimensional Limiting**: Separate service and consumer limits

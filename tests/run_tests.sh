@@ -1,10 +1,12 @@
 #!/bin/sh
-# SPDX-FileCopyrightText: 2025 Deutsche Telekom AG
+# SPDX-FileCopyrightText: 2025-2026 Deutsche Telekom AG
 #
 # SPDX-License-Identifier: Apache-2.0
 
 # Kong 3.9.1 Migration Test Suite
 # Tests all custom plugins and Deutsche Telekom customizations
+
+set -e
 
 echo "🚀 Kong 3.9.1 Migration Test Suite"
 echo "📋 Testing: JWT-Keycloak, Prometheus, Rate-Limiting-Merged, Zipkin, OpenTelemetry plugins"

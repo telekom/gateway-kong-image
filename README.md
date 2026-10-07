@@ -47,6 +47,21 @@ The `prometheus` plugin is based on Kong 3.9.1 with Deutsche Telekom enhancement
 - Horizon consumer handling for Pubsub-Horizon subscribers
 - Latency spike prevention with yield mechanisms
 
+HTTP request counters, bandwidth counters, and request, gateway, and upstream
+latency histograms include `traffic_type`. The exporter reads configured route
+tags with the prefix `variant--` or the legacy prefix
+`ei__telekom__de--apiexposure__variant---`:
+
+| Tag value | `traffic_type` |
+| --- | --- |
+| `default` | `api` |
+| `mcp` | `mcp` |
+| `telecontextmcp` | `telecontextmcp` |
+| `agent` | `a2a` |
+| Missing, invalid, or conflicting variants | `other` |
+
+Both prefixes use the same lowercase values.
+
 ### rate-limiting-merged
 
 The `rate-limiting-merged` plugin is based on Kong 3.9.1 rate-limiting with Deutsche Telekom enhancements:
