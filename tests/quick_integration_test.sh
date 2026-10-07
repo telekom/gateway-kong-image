@@ -184,8 +184,7 @@ fi
 # setup-opentelemetry.yml config (traces_endpoint, resource_attributes,
 # b3 propagation, plus the Deutsche Telekom zone/local_service_name fields).
 echo "Enabling global OpenTelemetry plugin..."
-#gitleaks:allow
-OTEL_RESPONSE=$(curl -s -u admin:admin -X POST $KONG_ADMIN_URL/plugins \
+OTEL_RESPONSE=$(curl -s -X POST $KONG_ADMIN_URL/plugins \
   -H "Content-Type: application/json" \
   -d '{
     "name": "opentelemetry",
@@ -199,7 +198,7 @@ OTEL_RESPONSE=$(curl -s -u admin:admin -X POST $KONG_ADMIN_URL/plugins \
       "zone": "test-zone",
       "header_type": "b3"
     }
-  }')
+  }' -u admin:admin) #gitleaks:allow
 
 if echo "$OTEL_RESPONSE" | jq -e '.name' >/dev/null 2>&1; then
     echo "✅ OpenTelemetry plugin enabled successfully"
@@ -540,7 +539,8 @@ test_opentelemetry_tracing() {
 
 assert_traffic_metric() {
     echo "$TRAFFIC_METRICS" | grep "^$1{" | grep -F "route=\"traffic-$2\"" | \
-        grep -F "traffic_type=\"$3\"" | grep -E "$4" >/dev/null || {
+        grep -F "traffic_type=\"$3\"" | \
+        grep -E 'workspace="[^"]*",traffic_type="[^"]*",consumer=' | grep -E "$4" >/dev/null || {
         echo "    Missing $1 for traffic-$2 with traffic_type=$3"
         return 1
     }
