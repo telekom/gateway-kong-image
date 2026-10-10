@@ -31,6 +31,12 @@ COPY --from=jwt-keycloak-builder /tmp/*.rock /tmp/
 # Root needed for installing plugins
 USER root
 
+# Install jemalloc as the memory allocator (better multi-threaded performance
+# and lower fragmentation than glibc malloc for Kong's request workload).
+RUN if [ -x "$(command -v apk)" ]; then apk add --no-cache jemalloc; \
+    elif [ -x "$(command -v apt-get)" ]; then apt-get update && apt-get install -y libjemalloc2 && rm -rf /var/lib/apt/lists/*; \
+    fi
+
 # Install jwt-keycloak plugin
 ARG PLUGIN_VERSION=1.8.1-1
 RUN luarocks install /tmp/kong-plugin-jwt-keycloak-${PLUGIN_VERSION}.all.rock
